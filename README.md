@@ -1,5 +1,5 @@
 # Learn-Power-Shell
-Power shell tips by Ender Phan
+Power shell tips collected by Ender Phan
 # Some useful links:
 - https://blog.windowsnt.lv/2011/11/15/tracking-user-activity-english/
 
@@ -9,7 +9,7 @@ Power shell tips by Ender Phan
 
 - It's a part of the AD module which is a part of RSAT (Remote Server Administration Tools). microsoft.com/en-us/download/details.aspx?id=7887 
 
-# Some usful book for rookie and master:
+# Some useful books for rookie and master:
 
 Beginners:
 
