@@ -105,7 +105,7 @@ PSRemotingProtocolVersion      2.2
 		write-host Name, Starttime
 	}`
 
-# Get-Alias
+# Alias
 
 - Diffences between process and function to get its alias
 
