@@ -9,7 +9,7 @@ Power shell tips collected by Ender Phan
 
 - It's a part of the AD module which is a part of RSAT (Remote Server Administration Tools). microsoft.com/en-us/download/details.aspx?id=7887 
 
-# Some useful books for rookie and master:
+# Some useful books for rookies and masters:
 
 Beginners:
 
@@ -112,3 +112,106 @@ PSRemotingProtocolVersion      2.2
 	`Get-Alias history`
 
 	`Get-Alias -Definition Where-Object`
+	
+- Get specific alias
+
+	`Get-alias [?]`
+
+	*[?] exactly ? will be listed
+# Services
+
+- To see the services are able to pause or continue
+
+	`Get-Service| ? {$_.CanPauseAndContinue}`
+
+- Get commands about SERVICE
+
+	`Get-Command -Noun service`
+
+CommandType     Name                                               ModuleName                       
+-----------     ----                                               ----------                       
+Cmdlet          Get-Service                                        Microsoft.PowerShell.Management  
+Cmdlet          New-Service                                        Microsoft.PowerShell.Management  
+Cmdlet          Restart-Service                                    Microsoft.PowerShell.Management  
+Cmdlet          Resume-Service                                     Microsoft.PowerShell.Management  
+Cmdlet          Set-Service                                        Microsoft.PowerShell.Management  
+Cmdlet          Start-Service                                      Microsoft.PowerShell.Management  
+Cmdlet          Stop-Service                                       Microsoft.PowerShell.Management  
+Cmdlet          Suspend-Service                                    Microsoft.PowerShell.Management 
+
+
+
+
+- To set the service status
+
+	`Set-Service -Name LanmanServer -Status Paused ( requires administrator mode )`
+	
+- Get properties of Service
+
+	`Get-Service | Get-Member`
+
+
+   TypeName: System.ServiceProcess.ServiceController
+
+Name                      MemberType    Definition                                                  
+----                      ----------    ----------                                                  
+Name                      AliasProperty Name = ServiceName                                          
+RequiredServices          AliasProperty RequiredServices = ServicesDependedOn                       
+Disposed                  Event         System.EventHandler Disposed(System.Object, System.EventA...
+Close                     Method        void Close()                                                
+Continue                  Method        void Continue()                                             
+CreateObjRef              Method        System.Runtime.Remoting.ObjRef CreateObjRef(type requeste...
+Dispose                   Method        void Dispose(), void IDisposable.Dispose()                  
+Equals                    Method        bool Equals(System.Object obj)                              
+ExecuteCommand            Method        void ExecuteCommand(int command)                            
+GetHashCode               Method        int GetHashCode()                                           
+GetLifetimeService        Method        System.Object GetLifetimeService()                          
+GetType                   Method        type GetType()                                              
+InitializeLifetimeService Method        System.Object InitializeLifetimeService()                   
+Pause                     Method        void Pause()                                                
+Refresh                   Method        void Refresh()                                              
+Start                     Method        void Start(), void Start(string[] args)                     
+Stop                      Method        void Stop()                                                 
+WaitForStatus             Method        void WaitForStatus(System.ServiceProcess.ServiceControlle...
+CanPauseAndContinue       Property      bool CanPauseAndContinue {get;}                             
+CanShutdown               Property      bool CanShutdown {get;}                                     
+CanStop                   Property      bool CanStop {get;}                                         
+Container                 Property      System.ComponentModel.IContainer Container {get;}           
+DependentServices         Property      System.ServiceProcess.ServiceController[] DependentServic...
+DisplayName               Property      string DisplayName {get;set;}                               
+MachineName               Property      string MachineName {get;set;}                               
+ServiceHandle             Property      System.Runtime.InteropServices.SafeHandle ServiceHandle {...
+ServiceName               Property      string ServiceName {get;set;}                               
+ServicesDependedOn        Property      System.ServiceProcess.ServiceController[] ServicesDepende...
+ServiceType               Property      System.ServiceProcess.ServiceType ServiceType {get;}        
+Site                      Property      System.ComponentModel.ISite Site {get;set;}                 
+Status                    Property      System.ServiceProcess.ServiceControllerStatus Status {get;} 
+ToString                  ScriptMethod  System.Object ToString(); 
+
+# Processes
+
+- To start/stop processes
+	
+	`Start-Process -FilePath notepad -WindowStyle Maximized`
+	
+- Kill processes
+	
+	`Get-Process notepad | kill -WhatIf`
+	
+# Invoke
+
+- List history using "h"
+
+Id CommandLine                                                                                    
+  -- -----------                                                                                    
+   1 get-serice                                                                                     
+   2 Get-Service                                                                                    
+   3 Get-Service | Where-Object {$_.status -eq "running"}                                           
+   4 Get-Service | Where-Object {($_.status -eq "running") and  ($_.Name -eq "WSearch")} | Format...
+   5 Get-Service | Where-Object {($_.status -eq "running") and  ($_.Name -eq "WSearch")} | Format...
+   6 Get-Service | Where-Object {($_.status -eq "running") -and  ($_.Name -eq "WSearch")} | Forma...
+   7 Get-EventLog 
+	
+- Using invoke to remote command thru history ID
+
+	`Invoke-History 2`
