@@ -12,7 +12,8 @@ Power shell tips by Ender Phan
 # Some useful tips:
 
 - To check AMD:
-$env:Processor_Architecture
+
+	`$env:Processor_Architecture`
 
 
 - Get Service by its variable
