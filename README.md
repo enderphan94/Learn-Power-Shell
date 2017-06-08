@@ -20,8 +20,8 @@ Power shell tips by Ender Phan
 
 	`Get-Service | Where-Object {$_.Name -eq "VSS"}`
 	
- + Name: is the name of colum 
- + VSS: is the name of service
+ 	+ Name: is the name of colum 
+ 	+ VSS: is the name of service
  
 - Display by specific column
 
