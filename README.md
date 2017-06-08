@@ -224,3 +224,48 @@ Id CommandLine
 - Using invoke to remote command thru history ID
 
 	`Invoke-History 2`
+	
+	
+#Event logs
+
+- See the available logs 
+
+	`Get-eventlog -list`
+	
+- Newest log of Application log
+
+	`Get-EventLog -LogName Application -Newest 5`
+	
+- Get the applications logs which its message contains a word "WmiApRpl"
+
+	`Get-EventLog -LogName Application | ? {$_.Message -match "WmiApRpl"}`
+	
+- Differences between -match and property's values
+
+	`1, Get-EventLog -LogName Application -Message "WmiApRpl"` : it doesn't allow
+	
+	`2, Get-EventLog -LogName Application -InstanceId "1001"` : it does allow
+	
+	Case 2 is allowed because the value "1001" is matched entirely in the property InstanceId
+	
+- Select category with Select
+
+	`Get-EventLog -LogName Application -Newest 5| select Source`
+	
+	
+	==> it means whith we should use -match to find the containing word in the property.
+		in case if we want to short the command that makes sure the word are contained entirelly in property 
+	
+# BIOS
+
+- Some:
+
+	`Get-WmiObject -class win32_bios`
+
+	`Alias: gwmi win32_bios`
+	
+
+
+
+
+
