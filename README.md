@@ -1,7 +1,15 @@
 # Learn-Power-Shell
 Power shell tips by Ender Phan
+# Some useful links:
+- https://blog.windowsnt.lv/2011/11/15/tracking-user-activity-english/
 
-Some useful tips:
+- https://technet.microsoft.com/en-us/library/cc281945(v=sql.105).aspx
+
+- https://technet.microsoft.com/et-ee/scriptcenter/dd742419.aspx
+
+- It's a part of the AD module which is a part of RSAT (Remote Server Administration Tools). microsoft.com/en-us/download/details.aspx?id=7887 
+
+# Some useful tips:
 
 - To check AMD:
 $env:Processor_Architecture
