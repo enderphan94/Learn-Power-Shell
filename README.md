@@ -9,6 +9,14 @@ Power shell tips by Ender Phan
 
 - It's a part of the AD module which is a part of RSAT (Remote Server Administration Tools). microsoft.com/en-us/download/details.aspx?id=7887 
 
+# Some usful book for rookie and master:
+
+Beginners:
+
+- learn-windows-powershell-3-in-a-month-of-lunches-don-jones-jeffrey-hicks
+
+- PG_PowerShell_XWIPSCRE01_0
+
 # Some useful tips:
 
 - To check AMD:
