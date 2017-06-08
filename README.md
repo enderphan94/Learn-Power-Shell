@@ -131,12 +131,19 @@ PSRemotingProtocolVersion      2.2
 CommandType     Name                                               ModuleName                       
 -----------     ----                                               ----------                       
 Cmdlet          Get-Service                                        Microsoft.PowerShell.Management  
+
 Cmdlet          New-Service                                        Microsoft.PowerShell.Management  
+
 Cmdlet          Restart-Service                                    Microsoft.PowerShell.Management  
+
 Cmdlet          Resume-Service                                     Microsoft.PowerShell.Management  
+
 Cmdlet          Set-Service                                        Microsoft.PowerShell.Management  
+
 Cmdlet          Start-Service                                      Microsoft.PowerShell.Management  
+
 Cmdlet          Stop-Service                                       Microsoft.PowerShell.Management  
+
 Cmdlet          Suspend-Service                                    Microsoft.PowerShell.Management 
 
 
