@@ -17,38 +17,44 @@ Power shell tips by Ender Phan
 
 
 - Get Service by its variable
-Get-Service | Where-Object {$_.Name -eq "VSS"}
+
+	`Get-Service | Where-Object {$_.Name -eq "VSS"}`
+	
  + Name: is the name of colum 
  + VSS: is the name of service
-* display by specific column
-Get-Service | Where-Object {$_.Name -eq "VSS"} | select Status
+ 
+- Display by specific column
+
+	`Get-Service | Where-Object {$_.Name -eq "VSS"} | select Status`
 
 
 - Outfile
-Get-Service | Where-Object {$_.Status -eq "running"} | Format-list | Out-File .\outhere.txt
+
+	`Get-Service | Where-Object {$_.Status -eq "running"} | Format-list | Out-File .\outhere.txt`
 
 - Responding property variable
 
-Get-Process | where {$_.Responding -eq "true"}
+	`Get-Process | where {$_.Responding -eq "true"}`
 
 - Operator 
-Get-Service | Where-Object {($_.Status -eq "running") -and ($_.Name -eq "WSearch")}
+
+	`Get-Service | Where-Object {($_.Status -eq "running") -and ($_.Name -eq "WSearch")}`
 
 - Whatif command
 
-Get-Process notepad |Stop-process -whatif
+	`Get-Process notepad |Stop-process -whatif`
 
 - Get-EventLog
 
-Get-EventLog -LogName Application -Newest 10
+	`Get-EventLog -LogName Application -Newest 10`
 
 - Get-help
 
-get-help get-process
+	`get-help get-process`
 
 - Tracking variable
 
-($PSVersionTable).psversion
+	`($PSVersionTable).psversion`
 
 from:
 
@@ -65,27 +71,29 @@ PSRemotingProtocolVersion      2.2
 
 - List Variables
 
-dir variable:
+	`dir variable:`
 
 - Get-Alias
 
+	`Get-Alias`
+
 - Really detail stuffs
 
-Get-Process notepad| Format-List * | more
+	`Get-Process notepad| Format-List * | more`
 
 - Format Table and its property
 
-Get-Process | Format-Table -Property Name, Starttime
+	`Get-Process | Format-Table -Property Name, Starttime`
 
 	+ Name and starttime are column name ( property )
 
 
 - if interested in the column ( property ) which contains starttime
 
-Get-Process | Where-Object{$_.Starttime}| Format-Table -Property Name, Starttime
+	`Get-Process | Where-Object{$_.Starttime}| Format-Table -Property Name, Starttime`
 
-* means if Startiime -eq true
+	`* means if Startiime -eq true
 	{
 		write-host Name, Starttime
-	}
+	}`
 
