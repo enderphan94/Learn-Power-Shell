@@ -9,6 +9,8 @@ Power shell tips collected by Ender Phan
 
 - It's a part of the AD module which is a part of RSAT (Remote Server Administration Tools). microsoft.com/en-us/download/details.aspx?id=7887 
 
+- http://powershelltutorial.net/
+
 # Some useful books for rookies and masters:
 
 Beginners:
