@@ -11,6 +11,8 @@ Power shell tips collected by Ender Phan
 
 - http://powershelltutorial.net/
 
+- https://ss64.com/ps/ ( live with it )
+
 # Some useful books for rookies and masters:
 
 Beginners:
