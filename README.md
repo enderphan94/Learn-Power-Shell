@@ -267,7 +267,29 @@ Id CommandLine
 
 	`Alias: gwmi win32_bios`
 	
+# Some methods
 
+- Maximum value:
+
+	`($array | Measure-Object -Maximum ).Maximum`
+
+	!!!!NB:
+
+		Just use Select to select the property. If we want to get exactly the value of that property. Just use dot (.) to print its value
+
+- Convert out-put to String
+
+	`$getEvent =  Get-EventLog -LogName Application -Newest 19|?{($_.Source -match "SSH") -and  ($_.Message -match "user")} |fl -Property Message |out-string `
+
+	* Use Out-string to convert
+
+- Split, In order to split the output we have to convert it to string variable. 
+
+	`$getEvent.Split(":")`
+
+
+
+# Active Directory
 
 
 
