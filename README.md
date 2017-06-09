@@ -291,6 +291,13 @@ Id CommandLine
 
 # Active Directory
 
+	`[System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()`
+
+	- [System.DirectoryServices.ActiveDirectory.Domain] --> class identifier 
+	- GetCurrentDomain() --> method
+
+Link :  https://blogs.technet.microsoft.com/heyscriptingguy/2006/11/09/how-can-i-use-windows-powershell-to-get-a-list-of-all-my-computers/
+	https://technet.microsoft.com/en-us/library/ff730967.aspx
 
 
 
