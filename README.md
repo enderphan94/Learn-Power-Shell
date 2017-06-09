@@ -13,6 +13,7 @@ Power shell tips collected by Ender Phan
 
 - https://ss64.com/ps/ ( live with it )
 
+- https://technet.microsoft.com/en-us/scriptcenter/ ( just a blog about Powershell Scripting )
 # Some useful books for rookies and masters:
 
 Beginners:
