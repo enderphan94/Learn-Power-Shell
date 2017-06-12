@@ -9,7 +9,7 @@ $ADSearch.SearchRoot ="LDAP://$Domain"
 $ADSearch.SearchScope = "subtree"
 $ADSearch.PageSize = 100
 
-$ADSearch.Filter = "(objectClass=user)"
+$ADSearch.Filter = "(objectClass=group)"
 
 
 $properies = "distinguishedName"
