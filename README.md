@@ -149,40 +149,7 @@ PSRemotingProtocolVersion      2.2
 
    TypeName: System.ServiceProcess.ServiceController
 
-Name                      MemberType    Definition                                                  
-----                      ----------    ----------                                                  
-Name                      AliasProperty Name = ServiceName                                          
-RequiredServices          AliasProperty RequiredServices = ServicesDependedOn                       
-Disposed                  Event         System.EventHandler Disposed(System.Object, System.EventA...
-Close                     Method        void Close()                                                
-Continue                  Method        void Continue()                                             
-CreateObjRef              Method        System.Runtime.Remoting.ObjRef CreateObjRef(type requeste...
-Dispose                   Method        void Dispose(), void IDisposable.Dispose()                  
-Equals                    Method        bool Equals(System.Object obj)                              
-ExecuteCommand            Method        void ExecuteCommand(int command)                            
-GetHashCode               Method        int GetHashCode()                                           
-GetLifetimeService        Method        System.Object GetLifetimeService()                          
-GetType                   Method        type GetType()                                              
-InitializeLifetimeService Method        System.Object InitializeLifetimeService()                   
-Pause                     Method        void Pause()                                                
-Refresh                   Method        void Refresh()                                              
-Start                     Method        void Start(), void Start(string[] args)                     
-Stop                      Method        void Stop()                                                 
-WaitForStatus             Method        void WaitForStatus(System.ServiceProcess.ServiceControlle...
-CanPauseAndContinue       Property      bool CanPauseAndContinue {get;}                             
-CanShutdown               Property      bool CanShutdown {get;}                                     
-CanStop                   Property      bool CanStop {get;}                                         
-Container                 Property      System.ComponentModel.IContainer Container {get;}           
-DependentServices         Property      System.ServiceProcess.ServiceController[] DependentServic...
-DisplayName               Property      string DisplayName {get;set;}                               
-MachineName               Property      string MachineName {get;set;}                               
-ServiceHandle             Property      System.Runtime.InteropServices.SafeHandle ServiceHandle {...
-ServiceName               Property      string ServiceName {get;set;}                               
-ServicesDependedOn        Property      System.ServiceProcess.ServiceController[] ServicesDepende...
-ServiceType               Property      System.ServiceProcess.ServiceType ServiceType {get;}        
-Site                      Property      System.ComponentModel.ISite Site {get;set;}                 
-Status                    Property      System.ServiceProcess.ServiceControllerStatus Status {get;} 
-ToString                  ScriptMethod  System.Object ToString(); 
+![Alt text](/image/get-command-none-service.PNG?raw=true "get-member")
 
 # Processes
 
@@ -198,20 +165,13 @@ ToString                  ScriptMethod  System.Object ToString();
 
 - List history using "h"
 
-Id CommandLine                                                                                    
-  -- -----------                                                                                    
-   1 get-serice                                                                                     
-   2 Get-Service                                                                                    
-   3 Get-Service | Where-Object {$_.status -eq "running"}                                           
-   4 Get-Service | Where-Object {($_.status -eq "running") and  ($_.Name -eq "WSearch")} | Format...
-   5 Get-Service | Where-Object {($_.status -eq "running") and  ($_.Name -eq "WSearch")} | Format...
-   6 Get-Service | Where-Object {($_.status -eq "running") -and  ($_.Name -eq "WSearch")} | Forma...
-   7 Get-EventLog 
-	
+
 - Using invoke to remote command thru history ID
 
 	`Invoke-History 2`
-	
+
+![Alt text](/image/help.PNG?raw=true "history")
+
 	
 # Event logs
 
