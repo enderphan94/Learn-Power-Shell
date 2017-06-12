@@ -1,3 +1,5 @@
+#Dev by Ender Loc Phan
+
 $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
 $ADSearch = New-Object System.DirectoryServices.DirectorySearcher
 #new empty ad search, search engine someth we can send queries to find out
