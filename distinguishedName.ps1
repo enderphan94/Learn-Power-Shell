@@ -1,6 +1,7 @@
 #Dev by Ender Loc Phan
 
 $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+
 $ADSearch = New-Object System.DirectoryServices.DirectorySearcher
 $ADSearch.SearchRoot ="LDAP://$Domain"
 
@@ -30,8 +31,7 @@ foreach ($user  in $userObjects){
         $dn =  $user.Properties.Item("distinguishedName")
         $dn
         
-        count++
-       
+        $count++   
               
     }
 
