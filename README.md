@@ -302,4 +302,9 @@ https://blogs.technet.microsoft.com/heyscriptingguy/2006/11/09/how-can-i-use-win
 https://technet.microsoft.com/en-us/library/ff730967.aspx
 
 
+LDAP Scan Map:
 
+http://www.computerperformance.co.uk/Logon/LDAP_attributes_active_directory.htm
+
+Bloodhound
+https://blog.cobaltstrike.com/2016/12/14/my-first-go-with-bloodhound/
