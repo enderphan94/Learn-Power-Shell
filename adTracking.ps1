@@ -1,6 +1,7 @@
 #Dev by Ender Loc Phan
 
 $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+
 $ADSearch = New-Object System.DirectoryServices.DirectorySearcher
 #new empty ad search, search engine someth we can send queries to find out
 
@@ -17,7 +18,8 @@ $ADSearch.Filter = "(objectClass=user)"
 # value of attribute : user
 #exp: $ADSearch.Filter = "(Name=Ender)"
 
-$properies = "distinguishedName","sAMAccountName","lastLogonTimeStamp"
+$properies = "distinguishedName","sAMAccountName","mail","lastLogonTimeStamp","pwdLastSet","accountExpires"
+#values in array are atttibute of LDAP
 
 foreach($pro in $properies){
 
@@ -31,12 +33,18 @@ $userObjects = $ADSearch.FindAll()
 
 $count = 0;
 
+
 foreach ($user  in $userObjects){
 
-    if($count -lt 10){
+    if($count -lt 10){       
+    
         $dn =  $user.Properties.Item("distinguishedName")
+        <##>
         $sam = $user.Properties.Item("sAMAccountName")
         $logon = $user.Properties.Item("lastLogonTimeStamp")
+        $mail =$user.Properties.Item("mail")
+        $passwordLS = $user.Properties.Item("pwdLastSet")
+        $accountEx = $user.Properties.Item("accountExpires")
 
         if($logon.Count -eq 0){
             $lastLogon = "Never"
@@ -46,14 +54,22 @@ foreach ($user  in $userObjects){
             $lastLogon = [DateTime]$logon[0]
 
         }
-    
-        if($dn -match "OU=EE"){
-           """$dn"",$sam,$lastLogon"
-           $count++;
-        }
-       
-       
-    }
 
+        $value = [DateTime]::FromFileTime($passwordLS[0])
+
+        if($accountEx.accountExpires -eq 0){
+                $convertAccountEx = "Never"
+        }
+        else{
+                $convertAccountEx = [DateTime]::FromFileTime($AccountEx.accountExpires)                
+        }
+      
+        if($dn -match "OU=EE" -and $accountEx -ne "Never"){
+           """$dn"",$sam,$mail,'password change: '$value,'last logon: '$lastLogon,'account expired: ' $convertAccountEx"
+           $count++;       
+        }
+    }
     
 }
+
+
