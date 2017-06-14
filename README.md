@@ -243,3 +243,19 @@ http://www.computerperformance.co.uk/Logon/LDAP_attributes_active_directory.htm
 
 Bloodhound
 https://blog.cobaltstrike.com/2016/12/14/my-first-go-with-bloodhound/
+
+Mapping ADA
+https://msdn.microsoft.com/en-us/library/aa746392(v=vs.85).aspx
+
+CSV:
+http://www.jhouseconsulting.com/2014/01/06/script-to-create-a-report-on-useraccountcontrol-flags-1088
+
+UserAccountControl:
+
+http://www.netvision.com/ad_useraccountcontrol.php
+
+Param:
+https://www.experts-exchange.com/questions/28587998/Powershell-require-at-least-one-of-two-parameters-to-be-mandatory.html
+
+Format:
+https://github.com/zloeber/FormatPowershellCode
