@@ -1,11 +1,29 @@
 #Dev by Ender Loc Phan
 
+#Usage
+# Suppy the objectClass (Eg: user, group, person...)
+###
+# Just Get Distinguished name
+###
+# .\adTracking.ps1 -dna           # Get Distinguished name and print it to console
+# .\adTracking.ps1 -dna -addToReport   # Write Distinguished name to text file
+# .\adTracking.ps1 -dna -addToReport -amount 100   # Write Distinguished name to text file with specific amout of data
+# .\adTracking.ps1 -dna -amount 100       # Print given amount of Distinguished name to console
+
+# Get All attributes
+###
+# .\adTracking.ps1               # Get default LDAP Attributes and print it to console
+# .\adTracking.ps1 -addToReport  # Write all data to CSV file
+# .\adTracking.ps1 -addToReport -amount 100 # Write data to CSV file with given amount of data
+# .\adTracking.ps1 -amount 100       # Print given amount of data to console   
+     
 param (
-[int]$amount,
-[switch]$dna,
-[switch]$userex,
-[switch]$userstatus,
-[switch]$addToReport
+    [parameter(mandatory=$true,HelpMessage='Provide a object class name !')][string]$objectClass,
+    [int]$amount,
+    [switch]$dna,
+    [switch]$userex,
+    [switch]$userstatus,
+    [switch]$addToReport
 )
 
 Write-Verbose -Message  "This script is running under PowerShell version $($PSVersionTable.PSVersion.Major)" -Verbose
@@ -22,13 +40,13 @@ $ADSearch.SearchRoot ="LDAP://$Domain"
 $ADSearch.SearchScope = "subtree"
 $ADSearch.PageSize = 100
 
-$ADSearch.Filter = "(objectClass=user)"
+$ADSearch.Filter = "(objectClass=$objectClass)"
 #where objectClass attribute are -eq to user
 #Atribute to search for: ObjectClass
 # value of attribute : user
 #exp: $ADSearch.Filter = "(Name=Ender)"
 
-
+#values in array are atttibutes of LDAP
 $properies =@("distinguishedName",
 "sAMAccountName",
 "mail",
@@ -36,8 +54,6 @@ $properies =@("distinguishedName",
 "pwdLastSet",
 "accountExpires",
 "userAccountControl")
-#values in array are atttibutes of LDAP
-
 
 
 foreach($pro in $properies)
@@ -53,12 +69,13 @@ $userCount =  $userObjects.Count
 $result = @()
 $count = 0
 
-$csvFileName = "Y:\Powershell\adTracking.csv"
-
+# Creating csv file
 $invalidChars = [io.path]::GetInvalidFileNameChars()
 $dateTimeFile = ((Get-Date -Format s).ToString() -replace "[$invalidChars]","-")
 $ScriptPath = {Split-Path $MyInvocation.ScriptName}
 $outFile = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).csv"
+$outFileTxt = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).txt"
+$Delimiter = ","
 
 $userValue = @("512",
 "514",
@@ -78,12 +95,11 @@ $userValue = @("512",
 "328226")
 
 
-$Delimiter = ","
 
+# Main method to track the attributes
 Function tracking
 {
-    $dn =  $user.Properties.Item("distinguishedName")[0]
-    
+    $dn =  $user.Properties.Item("distinguishedName")[0]    
     $global:sam = $user.Properties.Item("sAMAccountName")[0]
     $logon = $user.Properties.Item("lastLogonTimeStamp")
     $mail =$user.Properties.Item("mail")[0]
@@ -127,10 +143,8 @@ Function tracking
     $obj | Add-Member -MemberType NoteProperty -Name "Pass word last changed" -Value $value
     $obj | Add-Member -MemberType NoteProperty -Name "Last Logon " -Value $lastLogon
     $obj | Add-Member -MemberType NoteProperty -Name "Account Expires" -Value $convertAccountEx
-    $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus
-    
+    $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus    
 
-    #"""$dn"",$sam,$mail,'password change: $value','last logon: $lastLogon','account expired: $convertAccountEx','account status: $accountDisStatus'"
     if($addToReport){
         Write-Host "writing to csv file......"
         $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter
@@ -154,9 +168,15 @@ if($dna)
         {
             if($count -lt $amount)
             {
-                $sam = $user.Properties.Item("sAMAccountName")
-                $dn =  $user.Properties.Item("distinguishedName")
-                $arrayDN += $dn 
+                $sam = $user.Properties.Item("sAMAccountName")[0]
+                $dn =  $user.Properties.Item("distinguishedName")[0]               
+                if($addToReport){
+                    Write-Host "writing to $outFileTxt file......"
+                    $dn | Out-File "$outFileTxt" -Append
+                }
+                else{
+                    $arrayDN += $dn
+                }                 
                 $count++    
                 $TotalUsersProcessed++   
                 
@@ -174,9 +194,16 @@ if($dna)
         Write-Verbose -Message  "Please be patient whilst the script retrieves all $userCount distinguished names..." -Verbose
         foreach ($user  in $userObjects)
         {
-            $sam = $user.Properties.Item("sAMAccountName")
-            $dn =  $user.Properties.Item("distinguishedName")
-            $arrayDN += $dn
+            $sam = $user.Properties.Item("sAMAccountName")[0]
+            $dn =  $user.Properties.Item("distinguishedName")[0]
+            if($addToReport){
+                    Write-Host "writing to $outFileTxt file......"
+                    $dn | Out-File "$outFileTxt" -Append
+            }
+            else
+            {
+                    $arrayDN += $dn
+            } 
             $TotalUsersProcessed++
             If ($ProgressBar) 
             {
