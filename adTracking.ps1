@@ -4,7 +4,8 @@ param (
 [int]$amount,
 [switch]$dna,
 [switch]$userex,
-[switch]$userstatus
+[switch]$userstatus,
+[switch]$addToReport
 )
 
 Write-Verbose -Message  "This script is running under PowerShell version $($PSVersionTable.PSVersion.Major)" -Verbose
@@ -35,7 +36,7 @@ $properies =@("distinguishedName",
 "pwdLastSet",
 "accountExpires",
 "userAccountControl")
-#values in array are atttibute of LDAP
+#values in array are atttibutes of LDAP
 
 
 
@@ -53,6 +54,12 @@ $result = @()
 $count = 0
 
 $csvFileName = "Y:\Powershell\adTracking.csv"
+
+$invalidChars = [io.path]::GetInvalidFileNameChars()
+$dateTimeFile = ((Get-Date -Format s).ToString() -replace "[$invalidChars]","-")
+$ScriptPath = {Split-Path $MyInvocation.ScriptName}
+$outFile = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).csv"
+
 $userValue = @("512",
 "514",
 "544",
@@ -71,15 +78,15 @@ $userValue = @("512",
 "328226")
 
 
-
+$Delimiter = ","
 
 Function tracking
 {
-    $dn =  $user.Properties.Item("distinguishedName")
+    $dn =  $user.Properties.Item("distinguishedName")[0]
     
-    $global:sam = $user.Properties.Item("sAMAccountName")
+    $global:sam = $user.Properties.Item("sAMAccountName")[0]
     $logon = $user.Properties.Item("lastLogonTimeStamp")
-    $mail =$user.Properties.Item("mail")
+    $mail =$user.Properties.Item("mail")[0]
     $passwordLS = $user.Properties.Item("pwdLastSet")
     $accountEx = $user.Properties.Item("accountExpires")
     $accountDis= $user.Properties.Item("userAccountControl")
@@ -113,8 +120,25 @@ Function tracking
     }
     
     
-    """$dn"",$sam,$mail,'password change: '$value,'last logon: '$lastLogon,'account expired: ' $convertAccountEx,'account status: '$accountDisStatus"
-    Write-Host
+    $obj = New-object -TypeName psobject
+    $obj | Add-Member -MemberType NoteProperty -Name "Distinguished Name" -Value $dn
+    $obj | Add-Member -MemberType NoteProperty -Name "Sam account" -Value $sam
+    $obj | Add-Member -MemberType NoteProperty -Name "Email" -Value $mail
+    $obj | Add-Member -MemberType NoteProperty -Name "Pass word last changed" -Value $value
+    $obj | Add-Member -MemberType NoteProperty -Name "Last Logon " -Value $lastLogon
+    $obj | Add-Member -MemberType NoteProperty -Name "Account Expires" -Value $convertAccountEx
+    $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus
+    
+
+    #"""$dn"",$sam,$mail,'password change: $value','last logon: $lastLogon','account expired: $convertAccountEx','account status: $accountDisStatus'"
+    if($addToReport){
+        Write-Host "writing to csv file......"
+        $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter
+    }
+    else
+    {
+          $obj
+    }
 }
 
 ## distinguished Name method
@@ -135,7 +159,7 @@ if($dna)
                 $arrayDN += $dn 
                 $count++    
                 $TotalUsersProcessed++   
-                $sam
+                
             }
             If ($ProgressBar) 
             {
@@ -174,8 +198,14 @@ elseif($amount)
     {
         if($count -lt $amount)
         {
-            tracking
-            $count++
+            If ($ProgressBar) 
+            {
+                tracking
+                Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
+                $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)
+                $TotalUsersProcessed++
+                $count++
+            }
         }
     }
 }
