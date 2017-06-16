@@ -17,7 +17,7 @@ Suppy the objectClass (Eg: user, group, person...)
 
 
 
-![Alt text](/image/ADTracking(1).png?raw=true "map")
+![Alt text](/image/ADTracking (1).png?raw=true "map")
 # Just Enumerate Distinguished name
 
 - Enumerate Distinguished name and print it to console:
