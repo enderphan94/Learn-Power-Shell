@@ -33,11 +33,11 @@ Suppy the objectClass (Eg: user, group, person...)
 
     `.\adTracking.ps1`
     
--  Write all data to CSV file:
+- Write all data to CSV file:
 
     `.\adTracking.ps1 -addToReport` 
     
-- rite data to CSV file with given amount of data:
+- Write data to CSV file with given amount of data:
 
     `.\adTracking.ps1 -addToReport -amount 100`
     
