@@ -7,6 +7,10 @@ Here: https://github.com/enderphan94/Learn-Power-Shell/wiki
 
 It's being developed....
 
+- Powershell Version 4
+- Windows 7
+- Run as regular user
+
 # Usages 
 
 Suppy the objectClass (Eg: user, group, person...)
