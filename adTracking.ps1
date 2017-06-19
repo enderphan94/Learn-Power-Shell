@@ -1,34 +1,59 @@
 #Dev by Ender Loc Phan
 
-#Usage
-# Suppy the objectClass (Eg: user, group, person...)
-###
-# Just Get Distinguished name
-###
-# .\adTracking.ps1 -dna           # Get Distinguished name and print it to console
-# .\adTracking.ps1 -dna -addToReport   # Write Distinguished name to text file
-# .\adTracking.ps1 -dna -addToReport -amount 100   # Write Distinguished name to text file with specific amout of data
-# .\adTracking.ps1 -dna -amount 100       # Print given amount of Distinguished name to console
+<#Usage
+ Suppy the objectClass (Eg: user, group, person...)
 
-# Get All attributes
-###
-# .\adTracking.ps1               # Get default LDAP Attributes and print it to console
-# .\adTracking.ps1 -addToReport  # Write all data to CSV file
-# .\adTracking.ps1 -addToReport -amount 100 # Write data to CSV file with given amount of data
-# .\adTracking.ps1 -amount 100       # Print given amount of data to console   
-     
+ Just Enumerate Distinguished name
+
+ .\adTracking.ps1 -dna           # Enumerate Distinguished name and print it to console
+ .\adTracking.ps1 -dna -addToReport   # Write Distinguished name to text file
+ .\adTracking.ps1 -dna -addToReport -amount 100   # Write Distinguished name to text file with specific amout of data
+ .\adTracking.ps1 -dna -amount 100       # Print given amount of Distinguished name to console
+
+#>
+
+<# Get All attributes
+
+ .\adTracking.ps1               # Enumerate  all supplied LDAP Attributes and print it to console
+ .\adTracking.ps1 -addToReport  # Write all data to CSV file
+ .\adTracking.ps1 -addToReport -amount 100 # Write data to CSV file with given amount of data
+ .\adTracking.ps1 -amount 100       # Print given amount of data to console   
+#>    
+
+<# Update 1.1
+- Added the trusted domain method
+- Fixed Account expires function
+#>
 param (
     [parameter(mandatory=$true,HelpMessage='Provide a object class name !')][string]$objectClass,
     [int]$amount,
     [switch]$dna,
     [switch]$userex,
     [switch]$userstatus,
-    [switch]$addToReport
+    [switch]$addToReport,
+    [String]$trustedDomain
 )
 
 Write-Verbose -Message  "This script is running under PowerShell version $($PSVersionTable.PSVersion.Major)" -Verbose
 
-$Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+if ([String]::IsNullOrEmpty($TrustedDomain)) {
+  # Get the Current Domain Information
+  $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
+} 
+else 
+{
+  $context = new-object System.DirectoryServices.ActiveDirectory.DirectoryContext("domain",$TrustedDomain)
+  Try 
+  {
+    $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetDomain($context)
+  }
+  Catch [exception] {
+    $Host.UI.WriteErrorLine("ERROR: $($_.Exception.Message)")
+    Exit
+  }
+}
+
+
 
 $ADSearch = New-Object System.DirectoryServices.DirectorySearcher
 #new empty ad search, search engine someth we can send queries to find out
@@ -101,15 +126,15 @@ Function tracking
 {
     $dn =  $user.Properties.Item("distinguishedName")[0]    
     $global:sam = $user.Properties.Item("sAMAccountName")[0]
-    $logon = $user.Properties.Item("lastLogonTimeStamp")
+    $logon = $user.Properties.Item("lastLogonTimeStamp")[0]
     $mail =$user.Properties.Item("mail")[0]
     $passwordLS = $user.Properties.Item("pwdLastSet")
-    $accountEx = $user.Properties.Item("accountExpires")
-    $accountDis= $user.Properties.Item("userAccountControl")
+    $accountEx = $user.Properties.Item("accountExpires")[0]
+    $accountDis= $user.Properties.Item("userAccountControl")[0]
     
     if($logon.Count -eq 0)
     {
-        $lastLogon = "Never"
+        $lastLogon = "Never logon"
     }
     else
     {
@@ -117,16 +142,22 @@ Function tracking
     }
     
     $value = [DateTime]::FromFileTime($passwordLS[0])
+
     
-    if($accountEx.accountExpires -eq 0)
-    {
-        $convertAccountEx = "Never"
+    ### Account expires
+    $IngValue = $accountEx
+
+    if(($IngValue -eq 0) -or ($IngValue -gt [DateTime]::MaxValue.Ticks)){
+
+        $convertAccountEx = "Account is never expired"
     }
     else
     {
-        $convertAccountEx = [DateTime]::FromFileTime($AccountEx.accountExpires)
+        $Date = [DateTime]$lngValue
+        $convertAccountEx = $Date.AddYears(1600).ToLocalTime()
     }
-    
+    ### Account expires ended
+  
     if($accountDis -eq 512)
     {
         $accountDisStatus = "User is disbled"
@@ -175,7 +206,8 @@ if($dna)
                     $dn | Out-File "$outFileTxt" -Append
                 }
                 else{
-                    $arrayDN += $dn
+                    $dn
+                    #$arrayDN += $dn
                 }                 
                 $count++    
                 $TotalUsersProcessed++   
@@ -187,7 +219,7 @@ if($dna)
                 $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$amount)*100)
             }
         }
-        $arrayDN
+        #$arrayDN
     }    
     else
     {
@@ -202,7 +234,8 @@ if($dna)
             }
             else
             {
-                    $arrayDN += $dn
+                    $dn
+                    #$arrayDN += $dn
             } 
             $TotalUsersProcessed++
             If ($ProgressBar) 
@@ -212,7 +245,7 @@ if($dna)
             }
         }
         
-        $arrayDN
+        #$arrayDN
     }
 }
 ## Finished distinguished Name method
@@ -225,14 +258,15 @@ elseif($amount)
     {
         if($count -lt $amount)
         {
+            tracking
+            $TotalUsersProcessed++
+            $count++
             If ($ProgressBar) 
-            {
-                tracking
+            {                
                 Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
-                $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)
-                $TotalUsersProcessed++
-                $count++
+                $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)              
             }
+            
         }
     }
 }
@@ -240,13 +274,13 @@ else
 {
     Write-Verbose -Message  "Please be patient whilst the script retrieves all $userCount distinguished names..." -Verbose
     foreach ($user  in $userObjects)
-    {
+    {    
+        tracking
+        $TotalUsersProcessed++
         If ($ProgressBar) 
         {
-            tracking
             Write-Progress -Activity "Processing $($userCount) Users" -Status ("Count: 
             $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)
-            $TotalUsersProcessed++
         }
     }
 }
