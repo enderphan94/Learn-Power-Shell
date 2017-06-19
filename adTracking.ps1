@@ -1,18 +1,19 @@
 #Dev by Ender Loc Phan
+<#Requirements:
 
+Import-Module ActiveDirectory
+#>
 <#Usage
- Suppy the objectClass (Eg: user, group, person...)
+ - Suppy the objectClass (Eg: user, group, person...)
 
- Just Enumerate Distinguished name
+ - Just Enumerate Distinguished name
 
  .\adTracking.ps1 -dna           # Enumerate Distinguished name and print it to console
  .\adTracking.ps1 -dna -addToReport   # Write Distinguished name to text file
  .\adTracking.ps1 -dna -addToReport -amount 100   # Write Distinguished name to text file with specific amout of data
  .\adTracking.ps1 -dna -amount 100       # Print given amount of Distinguished name to console
 
-#>
-
-<# Get All attributes
+ - Get All attributes
 
  .\adTracking.ps1               # Enumerate  all supplied LDAP Attributes and print it to console
  .\adTracking.ps1 -addToReport  # Write all data to CSV file
@@ -25,22 +26,25 @@
 - Fixed Account expires function
 #>
 param (
-    [parameter(mandatory=$true,HelpMessage='Provide a object class name !')][string]$objectClass,
-    [int]$amount,
-    [switch]$dna,
-    [switch]$userex,
-    [switch]$userstatus,
-    [switch]$addToReport,
-    [String]$trustedDomain
+    #[parameter(mandatory=$true,HelpMessage='Provide a object class name !')][string]$type
+   
 )
-
 Write-Verbose -Message  "This script is running under PowerShell version $($PSVersionTable.PSVersion.Major)" -Verbose
+write-host 
+write-host " 1. Run on current domain "
+write-host " 2. Run on trusted domains "
+write-host 
+$type =  Read-Host -Prompt "Option "
 
-if ([String]::IsNullOrEmpty($TrustedDomain)) {
+$objectClass =  Read-Host -Prompt "objectClass "
+
+
+if ($type -eq 1) {
   # Get the Current Domain Information
+  
   $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
 } 
-else 
+elseif($type -eq 2) 
 {
   $context = new-object System.DirectoryServices.ActiveDirectory.DirectoryContext("domain",$TrustedDomain)
   Try 
@@ -83,9 +87,10 @@ $properies =@("distinguishedName",
 
 foreach($pro in $properies)
 {
-    $ADSearch.PropertiesToLoad.add($pro)
+    $ADSearch.PropertiesToLoad.add($pro)| out-null
     #the name of property of the object, search will load the name in an array #properties
 }
+
 
 
 $ProgressBar = $True
@@ -145,7 +150,7 @@ Function tracking
 
     
     ### Account expires
-    $IngValue = $accountEx
+    $IngValue = $accountExl
 
     if(($IngValue -eq 0) -or ($IngValue -gt [DateTime]::MaxValue.Ticks)){
 
@@ -153,7 +158,7 @@ Function tracking
     }
     else
     {
-        $Date = [DateTime]$lngValue
+        $Date = [DateTime]::FromFileTime($lngValue)
         $convertAccountEx = $Date.AddYears(1600).ToLocalTime()
     }
     ### Account expires ended
@@ -176,7 +181,7 @@ Function tracking
     $obj | Add-Member -MemberType NoteProperty -Name "Account Expires" -Value $convertAccountEx
     $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus    
 
-    if($addToReport){
+    if($exportCheck -eq $true){
         Write-Host "writing to csv file......"
         $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter
     }
@@ -186,57 +191,99 @@ Function tracking
     }
 }
 
-## distinguished Name method
-$arrayDN = @()
+function main{
 
-if($dna)
-{
-    if($amount)
+    # distinguished Name method
+    $arrayDN = @()
+
+    if($dna -eq $true)
     {
-        Write-Verbose -Message  "Please be patient whilst the script retrieves all $amount distinguished names..." -Verbose        
+        if($amountCheck -eq $true)
+        {
+            Write-Verbose -Message  "Please be patient whilst the script retrieves all $amount distinguished names..." -Verbose        
         
+            foreach ($user  in $userObjects)
+            {
+                if($count -lt $amount)
+                {
+                    $sam = $user.Properties.Item("sAMAccountName")[0]
+                    $dn =  $user.Properties.Item("distinguishedName")[0]
+                               
+                    if($exportCheck -eq $true){
+                        Write-Host "writing to $outFileTxt file......"
+                        $dn | Out-File "$outFileTxt" -Append
+                    }
+                    elseif($exportCheck -eq $false){
+                        $dn
+                        #$arrayDN += $dn
+                    }                 
+                    $count++    
+                    $TotalUsersProcessed++   
+                
+                }
+                If ($ProgressBar) 
+                {
+                    Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
+                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$amount)*100)
+                }
+            }
+            #$arrayDN
+        }    
+        elseif($amountCheck -eq $false)
+        {
+            Write-Verbose -Message  "Please be patient whilst the script retrieves all $userCount distinguished names..." -Verbose
+            foreach ($user  in $userObjects)
+            {
+                $sam = $user.Properties.Item("sAMAccountName")[0]
+                $dn =  $user.Properties.Item("distinguishedName")[0]
+                if($exportCheck -eq $true){
+                        Write-Host "writing to $outFileTxt file......"
+                        $dn | Out-File "$outFileTxt" -Append
+                }
+                elseif($exportCheck -eq $false)
+                {
+                        $dn
+                        #$arrayDN += $dn
+                } 
+                $TotalUsersProcessed++
+                If ($ProgressBar) 
+                {
+                    Write-Progress -Activity "Processing $($userCount) Users" -Status ("Count: 
+                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)
+                }
+            }
+        
+            #$arrayDN
+        }
+    }
+    ## Finished distinguished Name method
+
+
+    elseif($amountCheck -eq $false)
+    {
+        Write-Verbose -Message  "Please be patient whilst the script retrieves all $amount distinguished names..." -Verbose
         foreach ($user  in $userObjects)
         {
             if($count -lt $amount)
             {
-                $sam = $user.Properties.Item("sAMAccountName")[0]
-                $dn =  $user.Properties.Item("distinguishedName")[0]               
-                if($addToReport){
-                    Write-Host "writing to $outFileTxt file......"
-                    $dn | Out-File "$outFileTxt" -Append
+                tracking
+                $TotalUsersProcessed++
+                $count++
+                If ($ProgressBar) 
+                {                
+                    Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
+                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)              
                 }
-                else{
-                    $dn
-                    #$arrayDN += $dn
-                }                 
-                $count++    
-                $TotalUsersProcessed++   
-                
-            }
-            If ($ProgressBar) 
-            {
-                Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
-                $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$amount)*100)
+            
             }
         }
-        #$arrayDN
-    }    
+    }
     else
     {
         Write-Verbose -Message  "Please be patient whilst the script retrieves all $userCount distinguished names..." -Verbose
         foreach ($user  in $userObjects)
-        {
-            $sam = $user.Properties.Item("sAMAccountName")[0]
-            $dn =  $user.Properties.Item("distinguishedName")[0]
-            if($addToReport){
-                    Write-Host "writing to $outFileTxt file......"
-                    $dn | Out-File "$outFileTxt" -Append
-            }
-            else
-            {
-                    $dn
-                    #$arrayDN += $dn
-            } 
+        {    
+            tracking
             $TotalUsersProcessed++
             If ($ProgressBar) 
             {
@@ -244,48 +291,49 @@ if($dna)
                 $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)
             }
         }
-        
-        #$arrayDN
-    }
-}
-## Finished distinguished Name method
-
-
-elseif($amount)
-{
-    Write-Verbose -Message  "Please be patient whilst the script retrieves all $amount distinguished names..." -Verbose
-    foreach ($user  in $userObjects)
-    {
-        if($count -lt $amount)
-        {
-            tracking
-            $TotalUsersProcessed++
-            $count++
-            If ($ProgressBar) 
-            {                
-                Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
-                $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)              
-            }
-            
-        }
-    }
-}
-else
-{
-    Write-Verbose -Message  "Please be patient whilst the script retrieves all $userCount distinguished names..." -Verbose
-    foreach ($user  in $userObjects)
-    {    
-        tracking
-        $TotalUsersProcessed++
-        If ($ProgressBar) 
-        {
-            Write-Progress -Activity "Processing $($userCount) Users" -Status ("Count: 
-            $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)
-        }
     }
 }
 #$result
 
+if($type -eq 1){
+  
+    write-host
+    write-host " 1. Get distinguished name "
+    write-host " 2. Get all supplied attributes"
+    write-host
+    $methods = Read-Host -Prompt "Option "
 
+    if($methods -eq 1){
+
+        $dna = $true
+    }
+    elseif ($methods -eq 2)
+    {
+        $dna = $false
+    }
+    
+    $amount = Read-Host -Prompt "Amount of data (Enter to get all data)"
+
+    if($amount -eq ""){        
+        $amountCheck = $false
+    }
+    else{        
+        $amountCheck = $true
+    }
+    
+    $export = Read-Host -Prompt "Do you want to export the data? (y/n)"
+
+    if(($export -eq "y") -or ($export -eq "")){
+        $exportCheck = $true
+    }
+    elseif($export -eq "n"){
+         $exportCheck = $false
+    }
+    main
+}
+elseif($type -eq 2){
+
+
+}
 Write-Host
 Write-Verbose -Message  "Script Finished!!" -Verbose
