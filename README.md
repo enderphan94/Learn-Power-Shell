@@ -11,7 +11,7 @@ It's being developed....
 - Windows 7
 - Run as regular user
 
-# Usages 
+# Usages 1.0
 
 Suppy the objectClass (Eg: user, group, person...)
 
@@ -55,4 +55,16 @@ Suppy the objectClass (Eg: user, group, person...)
 
     `.\adTracking.ps1 -amount 100 `    
 
+
+# Usages 1.1
+
+You just need to follow the tools instruction
+
+- Updates:
+
+    + Added the trusted domain method
+    
+    + Fixed Account expires function
+    
+    + Change parameters to optional methods
 
