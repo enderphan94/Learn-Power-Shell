@@ -123,6 +123,8 @@ $ScriptPath = {Split-Path $MyInvocation.ScriptName}
 $outFile = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).csv"
 $outFileTxt = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).txt"
 $Delimiter = ","
+$NeverExpires = 9223372036854775807
+
 $userValue = @("512",
 "514",
 "544",
@@ -147,7 +149,7 @@ Function tracking
     $global:sam = $user.Properties.Item("sAMAccountName")[0]
     $logon = $user.Properties.Item("lastLogonTimeStamp")[0]
     $mail =$user.Properties.Item("mail")[0]
-    $passwordLS = $user.Properties.Item("pwdLastSet")
+    $passwordLS = $user.Properties.Item("pwdLastSet")[0]
     $accountEx = $user.Properties.Item("accountExpires")[0]
     $accountDis= $user.Properties.Item("userAccountControl")[0]
     
@@ -159,23 +161,30 @@ Function tracking
     {
         $lastLogon = [DateTime]$logon[0]
     }
-    
-    $value = [DateTime]::FromFileTime($passwordLS[0])
-    
-    ### Account expires
-    $IngValue = $accountExl
-
-    if(($IngValue -eq 0) -or ($IngValue -gt [DateTime]::MaxValue.Ticks))
+   
+    if($passwordLS -ne 0)
     {
-        $convertAccountEx = "Account is never expired"
+         $value = [DateTime]::FromFileTime($passwordLS)
     }
     else
     {
-        $Date = [DateTime]::FromFileTime($lngValue)
-        $convertAccountEx = $Date.AddYears(1600).ToLocalTime()
+        $value = ""
     }
-    ### Account expires ended
-  
+    
+ 
+    ### Account expires
+
+    if($accountEx -eq $NeverExpires)
+    {
+        $convertAccountEx = "Never"
+    }
+    else
+    {
+        $convertDate = [datetime]$accountEx
+        $convertAccountEx = "Expired in "+$convertDate
+    }
+     ### Account expires ended
+    
     if($accountDis -eq 512)
     {
         $accountDisStatus = "User is disbled"
@@ -195,12 +204,12 @@ Function tracking
     $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus    
 
     if($exportCheck -eq $true){
-        Write-Host "writing to csv file......"
+        Write-Host "writing to $outFile file......"
         $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter      
     }
     else
     {
-        $obj
+        $obj 
     }
 }
 
@@ -349,15 +358,14 @@ function optional{
 }
 
 if($type -eq 1)
-{
-  
+{  
     optional  
 }
 elseif($type -eq 2)
 {
-
     optional   
 }
+
 #$Finish
 Write-Host
 Write-Verbose -Message  "Script Finished!!" -Verbose
