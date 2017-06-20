@@ -39,8 +39,7 @@ $objectClass =  Read-Host -Prompt "objectClass "
 
 if ($type -eq 1) 
 {
-  # Get the Current Domain Information
-  
+  # Get the Current Domain Information  
   $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
 }
 elseif($type -eq 2) 
@@ -50,13 +49,11 @@ elseif($type -eq 2)
     write-host " 2. Get all trusted domain automatically"
     write-host
     $trust = Read-Host -Prompt "Option "
-
     if($trust -eq 1){
         write-host
         $trustDN = Read-Host -Prompt "Domain: "
         write-host
         $TrustedDomain = $trustDN
-
     }
     elseif($trust -eq 2){
     
@@ -66,8 +63,7 @@ elseif($type -eq 2)
         
         $trustDN = Read-Host -Prompt "Domain: "
         write-host
-        $TrustedDomain = $trustDN
-    }
+        $TrustedDomain = $trustDN    }
 
     $context = new-object System.DirectoryServices.ActiveDirectory.DirectoryContext("domain",$TrustedDomain)
     Try 
@@ -124,7 +120,6 @@ $outFile = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).csv"
 $outFileTxt = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).txt"
 $Delimiter = ","
 $NeverExpires = 9223372036854775807
-
 $userValue = @("512",
 "514",
 "544",
@@ -169,11 +164,9 @@ Function tracking
     else
     {
         $value = ""
-    }
-    
+    }    
  
     ### Account expires
-
     if($accountEx -eq $NeverExpires)
     {
         $convertAccountEx = "Never"
@@ -192,8 +185,7 @@ Function tracking
     else
     {
         $accountDisStatus = "User ready for logon"
-    }    
-    
+    }  
     $obj = New-object -TypeName psobject
     $obj | Add-Member -MemberType NoteProperty -Name "Distinguished Name" -Value $dn
     $obj | Add-Member -MemberType NoteProperty -Name "Sam account" -Value $sam
@@ -203,7 +195,8 @@ Function tracking
     $obj | Add-Member -MemberType NoteProperty -Name "Account Expires" -Value $convertAccountEx
     $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus    
 
-    if($exportCheck -eq $true){
+    if($exportCheck -eq $true)
+    {
         Write-Host "writing to $outFile file......"
         $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter      
     }
@@ -214,10 +207,8 @@ Function tracking
 }
 
 function main{
-
     # distinguished Name method
     $arrayDN = @()
-
     if($dna -eq $true)
     {
         if($amountCheck -eq $true)
@@ -278,7 +269,6 @@ function main{
             #$arrayDN
         }
     }
-
     ## Finished distinguished Name method
 
     elseif($amountCheck -eq $true)
@@ -324,7 +314,6 @@ function optional{
     write-host " 2. Get all supplied attributes"
     write-host
     $methods = Read-Host -Prompt "Option "
-
     if($methods -eq 1)
     {
         $dna = $true
@@ -332,20 +321,16 @@ function optional{
     elseif ($methods -eq 2)
     {
         $dna = $false
-    }
-    
+    }    
     $amount = Read-Host -Prompt "Amount of data (Enter to get all data)"
-
     if($amount -eq ""){        
         $amountCheck = $false
     }
     else
     {        
         $amountCheck = $true
-    }
-    
+    }    
     $export = Read-Host -Prompt "Do you want to export the data? (y/n)"
-
     if(($export -eq "y") -or ($export -eq ""))
     {
         $exportCheck = $true
