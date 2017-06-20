@@ -28,7 +28,6 @@ Import-Module ActiveDirectory
 
 Usage 1.1: Just flow the options given by the tool
 #>
-
 $activeMo = Import-Module ActiveDirectory -ErrorAction Stop
 
 Write-Verbose -Message  "This tool is running under PowerShell version $($PSVersionTable.PSVersion.Major)" -Verbose
