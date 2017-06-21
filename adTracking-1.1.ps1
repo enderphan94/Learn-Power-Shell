@@ -24,10 +24,12 @@ Import-Module ActiveDirectory
 <# Update 1.1
 - Added the trusted domain method
 - Fixed Account expires function
+- Fixed PasswordLS
 - change parameters to optional methods
 
 Usage 1.1: Just flow the options given by the tool
 #>
+
 $activeMo = Import-Module ActiveDirectory -ErrorAction Stop
 
 Write-Verbose -Message  "This tool is running under PowerShell version $($PSVersionTable.PSVersion.Major)" -Verbose
@@ -40,7 +42,7 @@ $objectClass =  Read-Host -Prompt "objectClass "
 
 if ($type -eq 1) 
 {
-  # Get the Current Domain Information  
+  # Get the Current Domain data  
   $Domain = [System.DirectoryServices.ActiveDirectory.Domain]::GetCurrentDomain()
 }
 elseif($type -eq 2) 
@@ -119,6 +121,7 @@ $dateTimeFile = ((Get-Date -Format s).ToString() -replace "[$invalidChars]","-")
 $ScriptPath = {Split-Path $MyInvocation.ScriptName}
 $outFile = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).csv"
 $outFileTxt = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).txt"
+$outFileHTM = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).htm"
 $Delimiter = ","
 $NeverExpires = 9223372036854775807
 $userValue = @("512",
@@ -137,14 +140,38 @@ $userValue = @("512",
 "328194",
 "328224",
 "328226")
+$head = @’
 
+<style>
+
+body { background-color:#dddddd;
+
+       font-family:Tahoma;
+
+       font-size:12pt; }
+
+td, th { border:1px solid black;
+
+         border-collapse:collapse; }
+
+th { color:white;
+
+     background-color:black; }
+
+table, tr, td, th { padding: 2px; margin: 0px }
+
+table { margin-left:50px; }
+
+</style>
+
+‘@
 # Main method to get all supplied attributes
 Function tracking
 {
     $dn =  $user.Properties.Item("distinguishedName")[0]    
     $global:sam = $user.Properties.Item("sAMAccountName")[0]
     $logon = $user.Properties.Item("lastLogonTimeStamp")[0]
-    $mail =$user.Properties.Item("mail")[0]
+    #$mail =$user.Properties.Item("mail")[0]
     $passwordLS = $user.Properties.Item("pwdLastSet")[0]
     $accountEx = $user.Properties.Item("accountExpires")[0]
     $accountDis= $user.Properties.Item("userAccountControl")[0]
@@ -168,14 +195,15 @@ Function tracking
     }    
  
     ### Account expires
+   
     if($accountEx -eq $NeverExpires)
     {
         $convertAccountEx = "Never"
     }
     else
     {
-        $convertDate = [datetime]$accountEx
-        $convertAccountEx = "Expired in "+$convertDate
+        #$convertDate = [datetime]$accountEx
+        $convertAccountEx = "Expired"
     }
      ### Account expires ended
     
@@ -190,23 +218,40 @@ Function tracking
     $obj = New-object -TypeName psobject
     $obj | Add-Member -MemberType NoteProperty -Name "Distinguished Name" -Value $dn
     $obj | Add-Member -MemberType NoteProperty -Name "Sam account" -Value $sam
-    $obj | Add-Member -MemberType NoteProperty -Name "Email" -Value $mail
+    #$obj | Add-Member -MemberType NoteProperty -Name "Email" -Value $mail
     $obj | Add-Member -MemberType NoteProperty -Name "Pass word last changed" -Value $value
     $obj | Add-Member -MemberType NoteProperty -Name "Last Logon " -Value $lastLogon
     $obj | Add-Member -MemberType NoteProperty -Name "Account Expires" -Value $convertAccountEx
     $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus    
 
+    $props=@{"Distinguished Name" =$dn
+             "Sam account"=$sam
+             "Pass word last changed"=$value
+             "Last Logon"=$lastLogon
+             "Account Expires"=$convertAccountEx
+             "Account Status"=$accountDisStatus
+    }
+
     if($exportCheck -eq $true)
-    {
-        Write-Host "writing to $outFile file......"
-        $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter      
+    {<#
+        if($valueType -eq $true)
+        {#>
+            Write-Host "writing to $outFile file......"
+            $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter
+        <#}
+        elseif($valueType -eq $false)
+        {
+         #$props|ConvertTo-HTML -head $head -PreContent “<h1>Hardware Inventory for SERVER2</h1>” |  Out-File -FilePath "C:\Users\p998wph\Documents\Ender\test2.htm"
+            
+             $props
+        } #>    
     }
     else
     {
         $obj 
     }
 }
-
+$cls = cls
 function main{
     # distinguished Name method
     $arrayDN = @()
@@ -340,6 +385,24 @@ function optional{
     {
          $exportCheck = $false
     }
+    <#
+    write-host
+    write-host " 1. CSV "
+    write-host " 2. HTML"
+    write-host
+
+    $fileType = Read-Host -Prompt "File type "
+
+    if($fileType -eq 1)
+    {
+        $valueType = $true
+    }
+    elseif($fileType -eq 2)
+    {
+        $valueType = $false
+    }
+    #>
+
     main
 }
 
