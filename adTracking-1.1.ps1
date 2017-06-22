@@ -38,7 +38,6 @@ write-host " 1. Run on current domain "
 write-host " 2. Run on trusted domains "
 write-host 
 $type =  Read-Host -Prompt "Option "
-$objectClass =  Read-Host -Prompt "objectClass "
 
 if ($type -eq 1) 
 {
@@ -53,18 +52,16 @@ elseif($type -eq 2)
     write-host
     $trust = Read-Host -Prompt "Option "
     if($trust -eq 1){
-        write-host
-        $trustDN = Read-Host -Prompt "Domain: "
+        
+        $trustDN = Read-Host -Prompt "Domain "
         write-host
         $TrustedDomain = $trustDN
     }
     elseif($trust -eq 2){
     
         $trustedD = Get-ADTrust -Filter * | select Name | Out-String
-        $trustedD
-        write-host
-        
-        $trustDN = Read-Host -Prompt "Domain: "
+        $trustedD             
+        $trustDN = Read-Host -Prompt "Domain "
         write-host
         $TrustedDomain = $trustDN    }
 
@@ -79,7 +76,12 @@ elseif($type -eq 2)
         Exit
     }
 }
+else
+{
+    Write-Verbose -Message  "Option is not valid" -Verbose
+}
 
+$objectClass =  Read-Host -Prompt "objectClass "
 $ADSearch = New-Object System.DirectoryServices.DirectorySearcher
 #new empty ad search, search engine someth we can send queries to find out
 
@@ -102,6 +104,7 @@ $properies =@("distinguishedName",
 "mail",
 "lastLogonTimeStamp",
 "pwdLastSet",
+"badpwdcount",
 "accountExpires",
 "userAccountControl")
 foreach($pro in $properies)
@@ -165,7 +168,7 @@ table { margin-left:50px; }
 </style>
 
 ‘@
-# Main method to get all supplied attributes
+# Supplied Attributes
 Function tracking
 {
     $dn =  $user.Properties.Item("distinguishedName")[0]    
@@ -173,6 +176,7 @@ Function tracking
     $logon = $user.Properties.Item("lastLogonTimeStamp")[0]
     #$mail =$user.Properties.Item("mail")[0]
     $passwordLS = $user.Properties.Item("pwdLastSet")[0]
+    $passwordC = $user.Properties.Item("badpwdcount")[0]
     $accountEx = $user.Properties.Item("accountExpires")[0]
     $accountDis= $user.Properties.Item("userAccountControl")[0]
     
@@ -220,10 +224,11 @@ Function tracking
     $obj | Add-Member -MemberType NoteProperty -Name "Sam account" -Value $sam
     #$obj | Add-Member -MemberType NoteProperty -Name "Email" -Value $mail
     $obj | Add-Member -MemberType NoteProperty -Name "Pass word last changed" -Value $value
+    $obj | Add-Member -MemberType NoteProperty -Name "Bad password count" -Value $passwordC
     $obj | Add-Member -MemberType NoteProperty -Name "Last Logon " -Value $lastLogon
     $obj | Add-Member -MemberType NoteProperty -Name "Account Expires" -Value $convertAccountEx
     $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus    
-
+    <#
     $props=@{"Distinguished Name" =$dn
              "Sam account"=$sam
              "Pass word last changed"=$value
@@ -231,7 +236,7 @@ Function tracking
              "Account Expires"=$convertAccountEx
              "Account Status"=$accountDisStatus
     }
-
+    #>
     if($exportCheck -eq $true)
     {<#
         if($valueType -eq $true)
@@ -251,6 +256,7 @@ Function tracking
         $obj 
     }
 }
+#Main run here
 $cls = cls
 function main{
     # distinguished Name method
@@ -367,7 +373,12 @@ function optional{
     elseif ($methods -eq 2)
     {
         $dna = $false
-    }    
+    }else
+    {
+        Write-Verbose -Message  "Option is not valid" -Verbose
+        exit
+    }
+    #Amount
     $amount = Read-Host -Prompt "Amount of data (Enter to get all data)"
     if($amount -eq ""){        
         $amountCheck = $false
@@ -376,6 +387,7 @@ function optional{
     {        
         $amountCheck = $true
     }    
+    #Export
     $export = Read-Host -Prompt "Do you want to export the data? (y/n)"
     if(($export -eq "y") -or ($export -eq ""))
     {
@@ -384,6 +396,11 @@ function optional{
     elseif($export -eq "n")
     {
          $exportCheck = $false
+    }
+    else
+    {
+        Write-Verbose -Message  "Option is not valid" -Verbose
+        exit
     }
     <#
     write-host
@@ -405,7 +422,7 @@ function optional{
 
     main
 }
-
+#Options
 if($type -eq 1)
 {  
     optional  
@@ -414,7 +431,12 @@ elseif($type -eq 2)
 {
     optional   
 }
+else{
 
-#$Finish
+    Write-Verbose -Message  "Option is not valid" -Verbose
+    exit
+}
+
+#Finish
 Write-Host
 Write-Verbose -Message  "Script Finished!!" -Verbose
