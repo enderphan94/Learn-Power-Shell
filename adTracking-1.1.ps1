@@ -63,7 +63,8 @@ elseif($type -eq 2)
         $trustedD             
         $trustDN = Read-Host -Prompt "Domain "
         write-host
-        $TrustedDomain = $trustDN    }
+        $TrustedDomain = $trustDN            
+    }
 
     $context = new-object System.DirectoryServices.ActiveDirectory.DirectoryContext("domain",$TrustedDomain)
     Try 
@@ -122,9 +123,9 @@ $count = 0
 $invalidChars = [io.path]::GetInvalidFileNameChars()
 $dateTimeFile = ((Get-Date -Format s).ToString() -replace "[$invalidChars]","-")
 $ScriptPath = {Split-Path $MyInvocation.ScriptName}
-$outFile = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).csv"
-$outFileTxt = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).txt"
-$outFileHTM = $($MyInvocation.MyCommand.Path)+"Report-$($dateTimeFile).htm"
+$outFile = $($PSScriptRoot)+"\$($Domain)-Report-$($dateTimeFile).csv"
+$outFileTxt = $($PSScriptRoot)+"\Report-$($dateTimeFile).txt"
+$outFileHTM = $($PSScriptRoot)+"\Report-$($dateTimeFile).htm"
 $Delimiter = ","
 $NeverExpires = 9223372036854775807
 $userValue = @("512",
@@ -174,12 +175,15 @@ Function tracking
     $dn =  $user.Properties.Item("distinguishedName")[0]    
     $global:sam = $user.Properties.Item("sAMAccountName")[0]
     $logon = $user.Properties.Item("lastLogonTimeStamp")[0]
-    #$mail =$user.Properties.Item("mail")[0]
+    $mail =$user.Properties.Item("mail")[0]
     $passwordLS = $user.Properties.Item("pwdLastSet")[0]
     $passwordC = $user.Properties.Item("badpwdcount")[0]
     $accountEx = $user.Properties.Item("accountExpires")[0]
     $accountDis= $user.Properties.Item("userAccountControl")[0]
-    
+    $global:exportedToCSV  = $false
+    $global:exportedToTxt = $false
+
+    #last Logon
     if($logon.Count -eq 0)
     {
         $lastLogon = "Never logon"
@@ -189,28 +193,54 @@ Function tracking
         $lastLogon = [DateTime]$logon[0]
     }
    
-    if($passwordLS -ne 0)
-    {
-         $value = [DateTime]::FromFileTime($passwordLS)
+    #password last set
+    if($passwordLS -eq 0)
+    {         
+         $value = "No password last set"
     }
     else
     {
-        $value = ""
+         $value = [DateTime]::FromFileTime($passwordLS)
+         if($value -eq "1/1/1601 1:00:00 AM"){
+                $value = "No password last set"
+         }
+         else{
+
+                $value = $value
+         }
     }    
  
-    ### Account expires
-   
+    #Account expires   
     if($accountEx -eq $NeverExpires)
     {
-        $convertAccountEx = "Never"
+        $convertAccountEx = "Not Expired"
     }
     else
     {
         #$convertDate = [datetime]$accountEx
         $convertAccountEx = "Expired"
     }
-     ### Account expires ended
-    
+
+    #Email
+    if([String]::IsNullOrEmpty($mail)){
+        
+        $email = "N/A"
+    }
+    else{
+        $email =$mail
+    }
+
+    #PasswordCount
+    if([String]::IsNullOrEmpty($passwordC)){
+
+        $passwordCStatus = "N/A"
+    }
+    else{
+
+        $passwordCStatus = $passwordC   
+    }
+
+    #UserInfor
     if($accountDis -eq 512)
     {
         $accountDisStatus = "User is disabled"
@@ -222,9 +252,9 @@ Function tracking
     $obj = New-object -TypeName psobject
     $obj | Add-Member -MemberType NoteProperty -Name "Distinguished Name" -Value $dn
     $obj | Add-Member -MemberType NoteProperty -Name "Sam account" -Value $sam
-    #$obj | Add-Member -MemberType NoteProperty -Name "Email" -Value $mail
-    $obj | Add-Member -MemberType NoteProperty -Name "Pass word last changed" -Value $value
-    $obj | Add-Member -MemberType NoteProperty -Name "Bad password count" -Value $passwordC
+    $obj | Add-Member -MemberType NoteProperty -Name "Email" -Value $email
+    $obj | Add-Member -MemberType NoteProperty -Name "Password last changed" -Value $value
+    $obj | Add-Member -MemberType NoteProperty -Name "Bad password count" -Value $passwordCStatus
     $obj | Add-Member -MemberType NoteProperty -Name "Last Logon " -Value $lastLogon
     $obj | Add-Member -MemberType NoteProperty -Name "Account Expires" -Value $convertAccountEx
     $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus    
@@ -241,7 +271,8 @@ Function tracking
     {<#
         if($valueType -eq $true)
         {#>
-            Write-Host "writing to $outFile file......"
+            
+            $global:exportedToCSV = $true
             $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter
         <#}
         elseif($valueType -eq $false)
@@ -253,8 +284,11 @@ Function tracking
     }
     else
     {
-        $obj 
+        $passwordLS 
     }
+
+    
+    
 }
 #Main run here
 $cls = cls
@@ -265,6 +299,7 @@ function main{
     {
         if($amountCheck -eq $true)
         {
+            Write-Host
             Write-Verbose -Message  "Please be patient whilst the script retrieves all $amount distinguished names..." -Verbose        
         
             foreach ($user  in $userObjects)
@@ -275,7 +310,7 @@ function main{
                     $dn =  $user.Properties.Item("distinguishedName")[0]
                                
                     if($exportCheck -eq $true){
-                        Write-Host "writing to $outFileTxt file......"
+                        $global:exportedToTxt = $true
                         $dn | Out-File "$outFileTxt" -Append
                     }
                     elseif($exportCheck -eq $false){
@@ -296,6 +331,7 @@ function main{
         }    
         elseif($amountCheck -eq $false)
         {
+            Write-Host
             Write-Verbose -Message  "Please be patient whilst the script retrieves all $userCount distinguished names..." -Verbose
             foreach ($user  in $userObjects)
             {
@@ -303,7 +339,7 @@ function main{
                 $dn =  $user.Properties.Item("distinguishedName")[0]
                 if($exportCheck -eq $true)
                 {
-                        Write-Host "writing to $outFileTxt file......"
+                        $global:exportedToTxt = $true
                         $dn | Out-File "$outFileTxt" -Append
                 }
                 elseif($exportCheck -eq $false)
@@ -325,6 +361,7 @@ function main{
 
     elseif($amountCheck -eq $true)
     {
+        Write-Host
         Write-Verbose -Message  "Please be patient whilst the script retrieves all $amount distinguished names..." -Verbose
         foreach ($user  in $userObjects)
         {
@@ -336,7 +373,7 @@ function main{
                 If ($ProgressBar) 
                 {                
                     Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
-                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)              
+                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$amount)*100)              
                 }
             
             }
@@ -344,6 +381,7 @@ function main{
     }
     elseif($amountCheck -eq $false)
     {
+        Write-Host
         Write-Verbose -Message  "Please be patient whilst the script retrieves all $userCount distinguished names..." -Verbose
         foreach ($user  in $userObjects)
         {    
@@ -435,6 +473,14 @@ else{
 
     Write-Verbose -Message  "Option is not valid" -Verbose
     exit
+}
+if($exportedToCSV -eq $true){
+        Write-Host
+        Write-Host "Data has been exported to $outFile" -foregroundcolor "magenta"
+}
+if($exportedToTxt -eq $true){
+        Write-Host
+        Write-Host "Data has been exported to $outFileTxt" -foregroundcolor "magenta"
 }
 
 #Finish
