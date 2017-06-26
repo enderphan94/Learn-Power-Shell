@@ -201,12 +201,8 @@ Function tracking
     else
     {
          $value = [DateTime]::FromFileTime($passwordLS)
-         if($value -eq "1/1/1601 1:00:00 AM"){
-                $value = "No password last set"
-         }
-         else{
-
-                $value = $value
+         if($value -eq $("1/1/1601 01:00:00" | Get-Date)){
+                $value = "No password last set"    
          }
     }    
  
@@ -284,7 +280,7 @@ Function tracking
     }
     else
     {
-        $passwordLS 
+        $obj 
     }
 
     
