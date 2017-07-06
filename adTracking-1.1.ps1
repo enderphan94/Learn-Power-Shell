@@ -65,6 +65,10 @@ elseif($type -eq 2)
         write-host
         $TrustedDomain = $trustDN            
     }
+    else{
+        Write-Verbose -Message  "Unknown entered option" -Verbose
+        exit 
+    }
 
     $context = new-object System.DirectoryServices.ActiveDirectory.DirectoryContext("domain",$TrustedDomain)
     Try 
@@ -80,9 +84,27 @@ elseif($type -eq 2)
 else
 {
     Write-Verbose -Message  "Option is not valid" -Verbose
+    exit
+}
+
+$objectCategory =  Read-Host -Prompt "objectCategory "
+
+if($objectCategory -eq ""){
+
+    Write-Verbose -Message  "objectCategory can't be null" -Verbose
+    exit    
 }
 
 $objectClass =  Read-Host -Prompt "objectClass "
+
+if($objectClass -eq ""){
+
+    Write-Verbose -Message  "Objectclass can't be null" -Verbose
+    exit    
+}
+
+$Domain = $Domain.PdcRoleOwner
+
 $ADSearch = New-Object System.DirectoryServices.DirectorySearcher
 #new empty ad search, search engine someth we can send queries to find out
 
@@ -93,11 +115,27 @@ $ADSearch.SearchRoot ="LDAP://$Domain"
 $ADSearch.SearchScope = "subtree"
 $ADSearch.PageSize = 100
 
-$ADSearch.Filter = "(objectClass=$objectClass)"
+$ADSearch.Filter = "(&(objectCategory=$objectCategory)(objectClass=$objectClass))"
 #where objectClass attribute are -eq to user
 #Atribute to search for: ObjectClass
 # value of attribute : user
 #exp: $ADSearch.Filter = "(Name=Ender)"
+
+$connect = [ADSI] "LDAP://$($Domain)" 
+
+$lockoutDuration = $connect.lockoutDuration.Value
+$lockoutThreshold  =$connect.lockoutThreshold
+$maxPwdAge =$connect.maxPwdAge.Value
+$maxPwdAgeValue =  $connect.ConvertLargeIntegerToInt64($maxPwdAge)
+$duraValue = $connect.ConvertLargeIntegerToInt64($lockoutDuration)
+
+$NowUtc = (Get-Date).ToFileTimeUtc()
+$lockoutTimeValue = $NowUtc + $duraValue
+
+if(-$duraValue -gt [datetime]::MaxValue.Ticks){
+
+
+}
 
 #values in array are atttibutes of LDAP
 $properies =@("distinguishedName",
@@ -107,7 +145,14 @@ $properies =@("distinguishedName",
 "pwdLastSet",
 "badpwdcount",
 "accountExpires",
-"userAccountControl")
+"userAccountControl",
+"modifyTimeStamp",
+"lockoutTime"
+"badPasswordTime",
+"maxPwdAge ",
+"Description"
+
+)
 foreach($pro in $properies)
 {
     $ADSearch.PropertiesToLoad.add($pro)| out-null
@@ -120,15 +165,17 @@ $result = @()
 $count = 0
 
 # Creating csv file
+
 $invalidChars = [io.path]::GetInvalidFileNameChars()
 $dateTimeFile = ((Get-Date -Format s).ToString() -replace "[$invalidChars]","-")
 $ScriptPath = {Split-Path $MyInvocation.ScriptName}
 $outFile = $($PSScriptRoot)+"\$($Domain)-Report-$($dateTimeFile).csv"
 $outFileTxt = $($PSScriptRoot)+"\Report-$($dateTimeFile).txt"
-$outFileHTM = $($PSScriptRoot)+"\Report-$($dateTimeFile).htm"
 $Delimiter = ","
 $NeverExpires = 9223372036854775807
-$userValue = @("512",
+$userValue = @("32"
+"64"
+"512",
 "514",
 "544",
 "546",
@@ -136,6 +183,7 @@ $userValue = @("512",
 "66050",
 "66080",
 "66082",
+"262144",
 "262656",
 "262658",
 "262688",
@@ -144,32 +192,42 @@ $userValue = @("512",
 "328194",
 "328224",
 "328226")
-$head = @’
 
-<style>
 
-body { background-color:#dddddd;
-
-       font-family:Tahoma;
-
-       font-size:12pt; }
-
-td, th { border:1px solid black;
-
-         border-collapse:collapse; }
-
-th { color:white;
-
-     background-color:black; }
-
-table, tr, td, th { padding: 2px; margin: 0px }
-
-table { margin-left:50px; }
-
-</style>
-
-‘@
 # Supplied Attributes
+$global:exportedToCSV  = $false
+$global:exportedToTxt = $false
+$global:ea = 0
+$global:last2015 = 0
+$global:last2016 = 0
+$global:last2017 = 0
+$global:otherLast = 0
+$global:NeverLogon = 0
+
+$global:noLastSet = 0
+$global:passSet2015 = 0
+$global:passSet2016 = 0
+$global:passSet2017 = 0
+$global:otherPassSet = 0
+
+$global:noBadSet= 0
+$global:basPassC0= 0
+$global:basPassC1= 0
+$global:basPassC2= 0
+$global:basPassC3= 0
+
+$global:noBadLogSet = 0
+$global:uknownBadLog = 0
+$global:badlog2015 =0
+$global:badlog2016 =0
+$global:badlog2017 =0
+$global:otherBadlog =0
+
+$global:accNotEx = 0
+$global:accEx = 0
+
+$global:accDisStatus=0
+
 Function tracking
 {
     $dn =  $user.Properties.Item("distinguishedName")[0]    
@@ -179,111 +237,256 @@ Function tracking
     $passwordLS = $user.Properties.Item("pwdLastSet")[0]
     $passwordC = $user.Properties.Item("badpwdcount")[0]
     $accountEx = $user.Properties.Item("accountExpires")[0]
-    $accountDis= $user.Properties.Item("userAccountControl")[0]
-    $global:exportedToCSV  = $false
-    $global:exportedToTxt = $false
-
+    $accountDis= $user.Properties.Item("userAccountControl")[0] 
+    $lastModi= $user.Properties.Item("modifyTimeStamp")[0]
+    $lockoutTime= $user.Properties.Item("lockoutTime")[0]
+	$lastFailedAt = $user.Properties.item("badPasswordTime")[0]
+    $Description = $user.Properties.item("Description")[0]
+ 
+    
     #last Logon
     if($logon.Count -eq 0)
     {
         $lastLogon = "Never logon"
+        $global:NeverLogon++
     }
     else
-    {
-        $lastLogon = [DateTime]$logon[0]
+    {        
+        $lastLogon = [datetime]::fromfiletime($logon)
+        $lastLogon= $lastLogon.ToString("yyyy/MM/dd")
+        
+        if($lastLogon.split("/")[0] -eq 2015){
+            $global:last2015++
+        }
+     
+        elseif ($lastLogon.split("/")[0] -eq 2016){
+            $global:last2016++
+        }
+        elseif ($lastLogon.split("/")[0] -eq 2017){
+            $global:last2017++
+        }else{
+
+            $global:otherLast++
+        }
+          
     }
    
     #password last set
     if($passwordLS -eq 0)
     {         
-         $value = "No password last set"
+         $value = "Not set"
+         $global:noLastSet++
     }
     else
-    {
-         $value = [DateTime]::FromFileTime($passwordLS)
+    {         
+         $value = [datetime]::fromfiletime($passwordLS)                
          if($value -eq $("1/1/1601 01:00:00" | Get-Date)){
-                $value = "No password last set"    
+                $value = "Not set"   
+                $global:noLastSet++ 
+         }
+         else{
+
+            $value = $value.ToString("yyyy/MM/dd")
+            if($value.split("/")[0] -eq 2015){
+                $global:passSet2015++
+            }     
+            elseif ($value.split("/")[0] -eq 2016){
+                $global:passSet2016++
+            }
+            elseif ($value.split("/")[0] -eq 2017){
+                $global:passSet2017++
+            }else{
+
+                $global:otherPassSet++
+            }
          }
     }    
  
     #Account expires   
-    if($accountEx -eq $NeverExpires)
+    if(($accountEx -eq $NeverExpires) -or ($accountEx -gt [Datetime]::MaxValue.Ticks))
     {
         $convertAccountEx = "Not Expired"
+        
     }
     else
     {
         #$convertDate = [datetime]$accountEx
         $convertAccountEx = "Expired"
+        $global:accEx++
     }
 
     #Email
     if([String]::IsNullOrEmpty($mail)){
         
         $email = "N/A"
+        
     }
     else{
         $email =$mail
+        $global:ea++
     }
 
     #PasswordCount
+
     if([String]::IsNullOrEmpty($passwordC)){
 
         $passwordCStatus = "N/A"
+        $global:noBadSet++
     }
     else{
 
         $passwordCStatus = $passwordC   
+        if($passwordC -eq 0){
+            $global:basPassC0++
+        }       
+        elseif($passwordC -eq 1){
+            $global:basPassC1++
+        }
+        elseif($passwordC -eq 2){
+            $global:basPassC2++
+        }
+        else{
+            $global:basPassC3++
+        }
     }
 
+     
     #UserInfor
-    if($accountDis -eq 512)
+    if($accountDis -band 512)
     {
-        $accountDisStatus = "User is disabled"
+        $accountDisStatus = "disabled"
+        $global:accDisStatus++
     }
     else
     {
-        $accountDisStatus = "User ready for logon"
+        $accountDisStatus = "none-disabled"
     }  
+    #If Smartcard Required
+    if( $accountDis -band 262144)
+    {
+        $smartCDStatus = "Required"
+    }
+    else
+    {
+        $smartCDStatus = "Not Required"
+    }  
+
+    #If Smartcard Required
+    if( $accountDis -band 0x40000)
+    {
+        $smartCDStatus = "Required"
+    }
+    else
+    {
+        $smartCDStatus = "Not Required"
+    }  
+
+    #If No password is required
+    if( $accountDis -band 32){
+        $passwordEnforced ="Not Required"
+    }
+    else
+    {
+        $passwordEnforced = "Required"
+    }  
+
+    #If the user cannot change the password
+    if( $accountDis -band 64){
+        $passChange ="Not allowed"
+    }
+    else
+    {
+        $passChange = "Allowed"
+    }
+
+    #Password never expired
+    if( $accountDis -band 0x10000){
+        $passNExp ="Never Expires is set"
+    }
+    else
+    {
+        $passNExp = "None Set"
+    }  
+
+    # Last Modified    
+    $lastModi = $lastModi.ToString("yyyy/MM/dd")
+    
+    #Datetime bad Logon
+    if ($lastFailedAt -eq 0){
+        $badLogOnTime = "Unknown"
+        $global:uknownBadLog++
+	}
+	else{
+        $badLogOnTime = [datetime]::fromfiletime($lastFailedAt)                
+        if($badLogOnTime -eq $("1/1/1601 01:00:00" | Get-Date))
+        {        
+            $badLogOnTime = "Not set"    
+            $global:noBadLogSet++
+        }
+        else{
+            $badLogOnTime= $badLogOnTime.ToString("yyyy/MM/dd")
+            if($badLogOnTime.split("/")[0] -eq 2015){
+                $global:badlog2015++
+            }       
+            elseif($badLogOnTime.split("/")[0] -eq 2016){
+                $global:badlog2016++
+            }
+            elseif($badLogOnTime.split("/")[0] -eq 2017){
+                $global:badlog2017++
+            }
+            else{
+                $global:otherBadlog++
+            }
+	    }
+   }
+	   
+	  
+    #maxPwdAgeValue to get expiration date
+
+    $expDAte = $passwordLS - $maxPwdAgeValue    
+    $expDAte = [datetime]::fromfiletime($expDAte) 
+    if($expDAte -eq $("02/15/1601 01:00:00" | Get-Date)){
+
+        $expDAte = "N/A"
+    }
+    else{
+        $expDAte = $expDAte.ToString("yyyy/MM/dd")
+
+       
+    }
+    
+    #$lockoutDuration
+
     $obj = New-object -TypeName psobject
     $obj | Add-Member -MemberType NoteProperty -Name "Distinguished Name" -Value $dn
     $obj | Add-Member -MemberType NoteProperty -Name "Sam account" -Value $sam
     $obj | Add-Member -MemberType NoteProperty -Name "Email" -Value $email
     $obj | Add-Member -MemberType NoteProperty -Name "Password last changed" -Value $value
     $obj | Add-Member -MemberType NoteProperty -Name "Bad password count" -Value $passwordCStatus
+    $obj | Add-Member -MemberType NoteProperty -Name "Last Bad Attempt" -Value $badLogOnTime 
     $obj | Add-Member -MemberType NoteProperty -Name "Last Logon " -Value $lastLogon
     $obj | Add-Member -MemberType NoteProperty -Name "Account Expires" -Value $convertAccountEx
-    $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus    
-    <#
-    $props=@{"Distinguished Name" =$dn
-             "Sam account"=$sam
-             "Pass word last changed"=$value
-             "Last Logon"=$lastLogon
-             "Account Expires"=$convertAccountEx
-             "Account Status"=$accountDisStatus
-    }
-    #>
-    if($exportCheck -eq $true)
-    {<#
-        if($valueType -eq $true)
-        {#>
-            
+    $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus  
+    $obj | Add-Member -MemberType NoteProperty -Name "Smartcard Required" -Value $smartCDStatus 
+    $obj | Add-Member -MemberType NoteProperty -Name "Password Required" -Value $passwordEnforced  
+    $obj | Add-Member -MemberType NoteProperty -Name "Password Change" -Value $passChange  
+    $obj | Add-Member -MemberType NoteProperty -Name "Never Expired Password Set" -Value $passNExp  
+    $obj | Add-Member -MemberType NoteProperty -Name "Password Expiration Date" -Value $expDAte
+    $obj | Add-Member -MemberType NoteProperty -Name "Last Modified" -Value $lastModi
+    #$obj | Add-Member -MemberType NoteProperty -Name "Lockout Time" -Value $lockoutTimeStatus
+    $obj | Add-Member -MemberType NoteProperty -Name "Description" -Value $Description
+     
+   
+    if($exportCheck -eq $true){
+      
             $global:exportedToCSV = $true
             $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter
-        <#}
-        elseif($valueType -eq $false)
-        {
-         #$props|ConvertTo-HTML -head $head -PreContent “<h1>Hardware Inventory for SERVER2</h1>” |  Out-File -FilePath "C:\Users\p998wph\Documents\Ender\test2.htm"
-            
-             $props
-        } #>    
+          
     }
     else
     {
-        $obj 
-    }
-
-    
+        $badLogOnTime 
+    }    
     
 }
 #Main run here
@@ -436,23 +639,6 @@ function optional{
         Write-Verbose -Message  "Option is not valid" -Verbose
         exit
     }
-    <#
-    write-host
-    write-host " 1. CSV "
-    write-host " 2. HTML"
-    write-host
-
-    $fileType = Read-Host -Prompt "File type "
-
-    if($fileType -eq 1)
-    {
-        $valueType = $true
-    }
-    elseif($fileType -eq 2)
-    {
-        $valueType = $false
-    }
-    #>
 
     main
 }
@@ -479,6 +665,180 @@ if($exportedToTxt -eq $true){
         Write-Host "Data has been exported to $outFileTxt" -foregroundcolor "magenta"
 }
 
+
+
+$global:IncludeImages = New-Object System.Collections.ArrayList 
+#[byte[]]$file = Get-Content image.jpeg -Encoding byte
+$global:check= 0
+$global:outFilePicPie = $($PSScriptRoot)+"\Pie-$($dateTimeFile)-$($global:check).jpeg"
+#PIE
+    #Email
+$emailPer = ($global:ea * 100)/$userCount
+$emailPer= [math]::Round($emailPer,2)
+$noEmailPer=  100 - $emailPer
+$mailHash = @{"Email Set"=$emailPer;"No Email"=$noEmailPer}
+    #Account expires
+$accExPer = ($global:accEx *100)/$userCount
+$accExPer = [math]::Round($accExPer,2)
+$accNotExPer = 100 - $accExPer
+$accExHash = @{"Expired"="$accExPer";"Not Expired"="$accNotExPer"}
+    #Account Status
+$accDisPer = ($global:accDisStatus * 100)/$userCount
+$accDisPer = [math]::Round($accDisPer,2)
+$accNoDisPer = 100 - $accDisPer
+$accStatusHash = @{"Disable"="$accDisPer";"None-Disbale"="$accNoDisPer"}
+Function drawPie {
+    param($hash,
+    [string]$title
+    )
+  
+
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Windows.Forms.DataVisualization
+    $Chart = New-object System.Windows.Forms.DataVisualization.Charting.Chart
+    $ChartArea = New-Object System.Windows.Forms.DataVisualization.Charting.ChartArea
+    $Series = New-Object -TypeName System.Windows.Forms.DataVisualization.Charting.Series
+    $ChartTypes = [System.Windows.Forms.DataVisualization.Charting.SeriesChartType]
+    $Series.ChartType = $ChartTypes::Pie
+    $Chart.Series.Add($Series)
+    $Chart.ChartAreas.Add($ChartArea)
+    $Chart.Series['Series1'].Points.DataBindXY($hash.keys, $hash.values)
+    $Chart.Series[‘Series1’][‘PieLabelStyle’] = ‘Disabled’
+    $Legend = New-Object System.Windows.Forms.DataVisualization.Charting.Legend
+    $Legend.IsEquallySpacedItems = $True
+    $Legend.BorderColor = 'Black'
+    $Chart.Legends.Add($Legend)
+    $chart.Series["Series1"].LegendText = "#VALX (#VALY%)"
+    $Chart.Width = 700
+    $Chart.Height = 400
+    $Chart.Left = 10
+    $Chart.Top = 10
+    $Chart.BackColor = [System.Drawing.Color]::White
+    $Chart.BorderColor = 'Black'
+    $Chart.BorderDashStyle = 'Solid'
+
+    $ChartTitle = New-Object System.Windows.Forms.DataVisualization.Charting.Title
+    $ChartTitle.Text = $title
+    $Font = New-Object System.Drawing.Font @('Microsoft Sans Serif','12', [System.Drawing.FontStyle]::Bold)
+    $ChartTitle.Font =$Font
+    $Chart.Titles.Add($ChartTitle)
+
+    $testPath = Test-Path $global:outFilePicPie
+    if($testPath -eq $True){
+        $global:check += 1      
+        $global:outFilePicPie = $($PSScriptRoot)+"\Pie-$($dateTimeFile)-$($global:check).jpeg"                 
+    }
+    $global:IncludeImages.Add($global:outFilePicPie)
+    $Chart.SaveImage($outFilePicPie, 'jpeg')
+    
+    
+}
+    
+
+
+#BAR
+    #lastLogon
+$lastLogonHash = [ordered]@{"2017"="$global:last2017";"2016"="$global:last2016"
+            ;"2015"="$global:last2015";"<2015"="$global:otherLast";"Never"="$global:NeverLogon"}
+$global:check1= 0
+$global:outFilePicBar = $($PSScriptRoot)+"\Bar-$($dateTimeFile)-$($global:check).jpeg"
+
+    #PassLastSet
+$passSetHash = [ordered]@{"2017"="$global:passSet2017";"2016"="$global:passSet2016";"2015"="$global:passSet2015";
+                                    "<2015"="$global:otherPassSet";"Not Set"="$global:noLastSet"}
+    #BadPassCount
+
+$badPassCHash = [ordered]@{"3"="$global:basPassC3";"2"="$global:basPassC2";"1"="$global:basPassC1"
+                                       "0"="$global:basPassC0";"N/A"="$global:noBadSet" }
+
+    #Last bad Attempt
+
+
+$lastBadLogHash = [ordered]@{"2017"="$global:badlog2017";"2016"="$global:badlog2016";"2015"="$global:badlog2015"
+                                              "Unknown"="$global:uknownBadLog";"Not set"="$global:noBadLogSet"}
+
+function drawBar{
+    param(
+    $hash,[string]$title
+    )
+    
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Windows.Forms.DataVisualization
+    $Chart1 = New-object System.Windows.Forms.DataVisualization.Charting.Chart
+    $ChartArea1 = New-Object System.Windows.Forms.DataVisualization.Charting.ChartArea
+    $Series1 = New-Object -TypeName System.Windows.Forms.DataVisualization.Charting.Series
+    $ChartTypes1 = [System.Windows.Forms.DataVisualization.Charting.SeriesChartType]
+    $Series1.ChartType = $ChartTypes1::Bar
+    $Chart1.Series.Add($Series1)
+    $Chart1.ChartAreas.Add($ChartArea1)
+    $Chart1.Series['Series1'].Points.DataBindXY($hash.keys, $hash.values)
+    $ChartArea1.AxisX.Title = "Years"
+    $ChartArea1.AxisY.Title = "Figures"
+    $ChartArea1.AxisY.Maximum = $userCount
+    $ChartArea1.AxisY.Interval = 10
+    #$ChartArea1.AxisY.IntervalOffset = 5
+    $Chart1.Width = 700
+    $Chart1.Height = 400
+    $Chart1.Left = 10
+    $Chart1.Top = 10
+    $Chart1.BackColor = [System.Drawing.Color]::White
+    $Chart1.BorderColor = 'Black'
+    $Chart1.BorderDashStyle = 'Solid'
+    
+    
+    $ChartTitle1 = New-Object System.Windows.Forms.DataVisualization.Charting.Title
+    $ChartTitle1.Text = $title
+    $Font1 = New-Object System.Drawing.Font @('Microsoft Sans Serif','12', [System.Drawing.FontStyle]::Bold)
+    $ChartTitle1.Font =$Font1
+    $Chart1.Titles.Add($ChartTitle1)
+
+    $testPath = Test-Path $global:outFilePicBar
+    if($testPath -eq $True){
+        $global:check1 += 1      
+        $global:outFilePicBar = $($PSScriptRoot)+"\Bar-$($dateTimeFile)-$($global:check1).jpeg"
+        
+            
+    }
+    $global:IncludeImages.Add($global:outFilePicBar)
+    $Chart1.SaveImage("$outFilePicBar", 'jpeg')
+    
+
+
+}
+
+
+drawPie -hash $mailHash -title "Mail"
+drawPie -hash $accExHash -title "Account Expires"
+drawPie -hash $accStatusHash -title "Account Status"
+drawBar -hash $lastLogonHash -title  "Last Logon Time"
+drawBar -hash $passSetHash -title "Password Last Changed"
+drawBar -Hash $badPassCHash -title "Bad Password Count"
+drawBar -hash $lastBadLogHash -title "Last bad Attempt date"
+$IncludeImage
+#$global:IncludeImages
+function Generate-Html {
+    Param(
+        [Parameter()]
+        [string[]]$IncludeImages
+    )
+
+    if ($IncludeImages){
+        $ImageHTML = $IncludeImages | % {
+        $ImageBits = [Convert]::ToBase64String((Get-Content $_ -Encoding Byte))
+        "<img src=data:image/jpeg;base64,$($ImageBits) alt='My Image'/>"
+    }
+        ConvertTo-Html -Body $style -PreContent $imageHTML |
+        Out-File "C:\Users\p998wph\Documents\Ender\test2.htm"
+    }
+}
+
+Generate-Html -IncludeImages $global:IncludeImages
+
+
+foreach($image in $IncludeImages){
+
+    rm $image
+}
 #Finish
 Write-Host
 Write-Verbose -Message  "Script Finished!!" -Verbose
