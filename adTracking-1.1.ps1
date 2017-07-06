@@ -352,7 +352,7 @@ Function tracking
 
      
     #UserInfor
-    if($accountDis -band 512)
+    if($accountDis -band 0x0002)
     {
         $accountDisStatus = "disabled"
         $global:accDisStatus++
@@ -687,6 +687,7 @@ $accDisPer = ($global:accDisStatus * 100)/$userCount
 $accDisPer = [math]::Round($accDisPer,2)
 $accNoDisPer = 100 - $accDisPer
 $accStatusHash = @{"Disable"="$accDisPer";"None-Disbale"="$accNoDisPer"}
+
 Function drawPie {
     param($hash,
     [string]$title
@@ -747,13 +748,10 @@ $global:outFilePicBar = $($PSScriptRoot)+"\Bar-$($dateTimeFile)-$($global:check)
 $passSetHash = [ordered]@{"2017"="$global:passSet2017";"2016"="$global:passSet2016";"2015"="$global:passSet2015";
                                     "<2015"="$global:otherPassSet";"Not Set"="$global:noLastSet"}
     #BadPassCount
-
 $badPassCHash = [ordered]@{"3"="$global:basPassC3";"2"="$global:basPassC2";"1"="$global:basPassC1"
                                        "0"="$global:basPassC0";"N/A"="$global:noBadSet" }
 
     #Last bad Attempt
-
-
 $lastBadLogHash = [ordered]@{"2017"="$global:badlog2017";"2016"="$global:badlog2016";"2015"="$global:badlog2015"
                                               "Unknown"="$global:uknownBadLog";"Not set"="$global:noBadLogSet"}
 
