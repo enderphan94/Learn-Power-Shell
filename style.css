@@ -1,0 +1,75 @@
+img{
+
+margin-left: 40px;
+margin-right: 40px;
+margin-bottom: 20px;
+margin-top: 20px;
+
+}
+body {
+    	background-color: #b7c8db;
+
+}
+
+table.tabinfo th, td {
+	border: 1px solid black;
+	table-layout: fixed;
+}
+
+table.tabforest th, td {
+	border: 1px solid black;
+	table-layout: fixed;	
+	white-space:pre;
+}
+table.tabdomain th,td{
+	border: 1px solid black;
+	table-layout: fixed;	
+	white-space:pre;
+
+}
+tabe.tabexecu th,td{
+	border: 1px solid black;
+	table-layout: fixed;	
+	white-space:pre;
+}
+.tabinfo{
+	background-color: white;
+	margin-bottom: 20px;
+	margin-top: 20p;
+	margin-left: 40px;
+	height:100%;
+	widthl:auto;
+	
+}
+
+.tabforest{
+	background-color: white;
+	margin-bottom: 20px;
+	margin-top: 20p;
+	margin-left: 40px;
+	widthl:auto;
+	height:100%;
+}
+.tabdomain{
+	background-color: white;
+	margin-bottom: 20px;
+	margin-top: 20p;
+	margin-left: 40px;
+	widthl:auto;
+	height:100%;
+}
+.tabexecu{
+	background-color: white;
+	margin-bottom: 20px;
+	margin-top: 20p;
+	margin-left: 40px;
+	widthl:auto;
+	height:100%;
+
+}
+.tabofexecu{
+	float: left;
+}
+p {
+    	font-size: 24px;
+}
