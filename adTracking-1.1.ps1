@@ -31,14 +31,12 @@ Usage 1.1: Just flow the options given by the tool
 #>
 
 $activeMo = Import-Module ActiveDirectory -ErrorAction Stop
-
 Write-Verbose -Message  "This tool is running under PowerShell version $($PSVersionTable.PSVersion.Major)" -Verbose
 write-host 
 write-host " 1. Run on current domain "
 write-host " 2. Run on trusted domains "
 write-host 
 $type =  Read-Host -Prompt "Option "
-
 if ($type -eq 1) 
 {
   # Get the Current Domain data  
@@ -86,57 +84,36 @@ else
     Write-Verbose -Message  "Option is not valid" -Verbose
     exit
 }
-
 $objectCategory =  Read-Host -Prompt "objectCategory "
-
 if($objectCategory -eq ""){
-
     Write-Verbose -Message  "objectCategory can't be null" -Verbose
     exit    
 }
-
 $objectClass =  Read-Host -Prompt "objectClass "
-
 if($objectClass -eq ""){
 
     Write-Verbose -Message  "Objectclass can't be null" -Verbose
     exit    
 }
-
 $Domain = $Domain.PdcRoleOwner
-
 $ADSearch = New-Object System.DirectoryServices.DirectorySearcher
 #new empty ad search, search engine someth we can send queries to find out
-
 $ADSearch.SearchRoot ="LDAP://$Domain"
 #where we wanna look in LDAP is Domain, because we don't wanna search from root
 #root is: $objDomain = New-Object System.DirectoryServices.DirectoryEntry
-
 $ADSearch.SearchScope = "subtree"
 $ADSearch.PageSize = 100
-
 $ADSearch.Filter = "(&(objectCategory=$objectCategory)(objectClass=$objectClass))"
 #where objectClass attribute are -eq to user
 #Atribute to search for: ObjectClass
 # value of attribute : user
 #exp: $ADSearch.Filter = "(Name=Ender)"
-
 $connect = [ADSI] "LDAP://$($Domain)" 
-
 $lockoutDuration = $connect.lockoutDuration.Value
 $lockoutThreshold  =$connect.lockoutThreshold
 $maxPwdAge =$connect.maxPwdAge.Value
 $maxPwdAgeValue =  $connect.ConvertLargeIntegerToInt64($maxPwdAge)
 $duraValue = $connect.ConvertLargeIntegerToInt64($lockoutDuration)
-
-$NowUtc = (Get-Date).ToFileTimeUtc()
-$lockoutTimeValue = $NowUtc + $duraValue
-
-if(-$duraValue -gt [datetime]::MaxValue.Ticks){
-
-
-}
-
 #values in array are atttibutes of LDAP
 $properies =@("distinguishedName",
 "sAMAccountName",
@@ -163,9 +140,7 @@ $userObjects = $ADSearch.FindAll()
 $userCount =  $userObjects.Count
 $result = @()
 $count = 0
-
 # Creating csv file
-
 $invalidChars = [io.path]::GetInvalidFileNameChars()
 $dateTimeFile = ((Get-Date -Format s).ToString() -replace "[$invalidChars]","-")
 $ScriptPath = {Split-Path $MyInvocation.ScriptName}
@@ -192,8 +167,6 @@ $userValue = @("32"
 "328194",
 "328224",
 "328226")
-
-
 # Supplied Attributes
 $global:exportedToCSV  = $false
 $global:exportedToTxt = $false
@@ -203,31 +176,38 @@ $global:last2016 = 0
 $global:last2017 = 0
 $global:otherLast = 0
 $global:NeverLogon = 0
-
 $global:noLastSet = 0
 $global:passSet2015 = 0
 $global:passSet2016 = 0
 $global:passSet2017 = 0
 $global:otherPassSet = 0
-
 $global:noBadSet= 0
 $global:basPassC0= 0
 $global:basPassC1= 0
 $global:basPassC2= 0
 $global:basPassC3= 0
-
 $global:noBadLogSet = 0
 $global:uknownBadLog = 0
 $global:badlog2015 =0
 $global:badlog2016 =0
 $global:badlog2017 =0
 $global:otherBadlog =0
-
 $global:accNotEx = 0
 $global:accEx = 0
-
 $global:accDisStatus=0
-
+$global:smartRe =0
+$global:passNotRe= 0
+$global:passChangeNotAll = 0
+$global:passNExpSet = 0
+$global:ageNA = 0
+$global:ageDate2017=0
+$global:ageDate2016=0
+$global:ageDate2015=0
+$global:otherAgeDAte=0
+$global:modi2015 =0
+$global:modi2016=0
+$global:modi2017=0
+$global:otherModi=0
 Function tracking
 {
     $dn =  $user.Properties.Item("distinguishedName")[0]    
@@ -241,9 +221,7 @@ Function tracking
     $lastModi= $user.Properties.Item("modifyTimeStamp")[0]
     $lockoutTime= $user.Properties.Item("lockoutTime")[0]
 	$lastFailedAt = $user.Properties.item("badPasswordTime")[0]
-    $Description = $user.Properties.item("Description")[0]
- 
-    
+    $Description = $user.Properties.item("Description")[0] 
     #last Logon
     if($logon.Count -eq 0)
     {
@@ -267,10 +245,8 @@ Function tracking
         }else{
 
             $global:otherLast++
-        }
-          
-    }
-   
+        }          
+    }   
     #password last set
     if($passwordLS -eq 0)
     {         
@@ -300,8 +276,7 @@ Function tracking
                 $global:otherPassSet++
             }
          }
-    }    
- 
+    }     
     #Account expires   
     if(($accountEx -eq $NeverExpires) -or ($accountEx -gt [Datetime]::MaxValue.Ticks))
     {
@@ -314,7 +289,6 @@ Function tracking
         $convertAccountEx = "Expired"
         $global:accEx++
     }
-
     #Email
     if([String]::IsNullOrEmpty($mail)){
         
@@ -325,9 +299,7 @@ Function tracking
         $email =$mail
         $global:ea++
     }
-
     #PasswordCount
-
     if([String]::IsNullOrEmpty($passwordC)){
 
         $passwordCStatus = "N/A"
@@ -348,9 +320,7 @@ Function tracking
         else{
             $global:basPassC3++
         }
-    }
-
-     
+    }  
     #UserInfor
     if($accountDis -band 0x0002)
     {
@@ -365,16 +335,7 @@ Function tracking
     if( $accountDis -band 262144)
     {
         $smartCDStatus = "Required"
-    }
-    else
-    {
-        $smartCDStatus = "Not Required"
-    }  
-
-    #If Smartcard Required
-    if( $accountDis -band 0x40000)
-    {
-        $smartCDStatus = "Required"
+        $global:smartRe++
     }
     else
     {
@@ -384,6 +345,7 @@ Function tracking
     #If No password is required
     if( $accountDis -band 32){
         $passwordEnforced ="Not Required"
+        $global:passNotRe++
     }
     else
     {
@@ -393,6 +355,7 @@ Function tracking
     #If the user cannot change the password
     if( $accountDis -band 64){
         $passChange ="Not allowed"
+        $global:passChangeNotAll++
     }
     else
     {
@@ -402,15 +365,29 @@ Function tracking
     #Password never expired
     if( $accountDis -band 0x10000){
         $passNExp ="Never Expires is set"
+        $global:passNExpSet++
     }
     else
     {
         $passNExp = "None Set"
     }  
 
-    # Last Modified    
+    # Last Modified
+    if($lastModi){    
     $lastModi = $lastModi.ToString("yyyy/MM/dd")
-    
+    if($lastModi.split("/")[0] -eq 2015){
+         $global:modi2015++
+    }       
+    elseif($lastModi.split("/")[0] -eq 2016){
+         $global:modi2016++
+    }
+    elseif($lastModi.split("/")[0] -eq 2017){
+         $global:modi2017++
+    }
+     else{
+         $global:otherModi++
+    }
+    }
     #Datetime bad Logon
     if ($lastFailedAt -eq 0){
         $badLogOnTime = "Unknown"
@@ -438,25 +415,32 @@ Function tracking
                 $global:otherBadlog++
             }
 	    }
-   }
-	   
-	  
+   }   	  
     #maxPwdAgeValue to get expiration date
-
     $expDAte = $passwordLS - $maxPwdAgeValue    
     $expDAte = [datetime]::fromfiletime($expDAte) 
     if($expDAte -eq $("02/15/1601 01:00:00" | Get-Date)){
 
         $expDAte = "N/A"
+        $global:ageNA++
     }
     else{
         $expDAte = $expDAte.ToString("yyyy/MM/dd")
-
+        if($expDAte.split("/")[0] -eq 2015){
+            $global:ageDate2015++
+        }       
+        elseif($expDAte.split("/")[0] -eq 2016){
+            $global:ageDate2016++
+        }
+        elseif($expDAte.split("/")[0] -eq 2017){
+            $global:ageDate2017++
+        }
+        else{
+            $global:otherAgeDAte++
+        }
        
-    }
-    
+    }   
     #$lockoutDuration
-
     $obj = New-object -TypeName psobject
     $obj | Add-Member -MemberType NoteProperty -Name "Distinguished Name" -Value $dn
     $obj | Add-Member -MemberType NoteProperty -Name "Sam account" -Value $sam
@@ -472,22 +456,16 @@ Function tracking
     $obj | Add-Member -MemberType NoteProperty -Name "Password Change" -Value $passChange  
     $obj | Add-Member -MemberType NoteProperty -Name "Never Expired Password Set" -Value $passNExp  
     $obj | Add-Member -MemberType NoteProperty -Name "Password Expiration Date" -Value $expDAte
-    $obj | Add-Member -MemberType NoteProperty -Name "Last Modified" -Value $lastModi
-    #$obj | Add-Member -MemberType NoteProperty -Name "Lockout Time" -Value $lockoutTimeStatus
-    $obj | Add-Member -MemberType NoteProperty -Name "Description" -Value $Description
-     
-   
-    if($exportCheck -eq $true){
-      
+    $obj | Add-Member -MemberType NoteProperty -Name "Last Modified" -Value $lastModi    
+    $obj | Add-Member -MemberType NoteProperty -Name "Description" -Value $Description  
+    if($exportCheck -eq $true){    
             $global:exportedToCSV = $true
-            $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter
-          
+            $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter        
     }
     else
     {
-        $badLogOnTime 
-    }    
-    
+        $obj
+    }      
 }
 #Main run here
 $cls = cls
@@ -499,11 +477,11 @@ function main{
         if($amountCheck -eq $true)
         {
             Write-Host
-            Write-Verbose -Message  "Please be patient whilst the script retrieves all $amount distinguished names..." -Verbose        
+            Write-Verbose -Message  "Please be patient whilst the script retrieves all $global:amount distinguished names..." -Verbose        
         
             foreach ($user  in $userObjects)
             {
-                if($count -lt $amount)
+                if($count -lt $global:amount)
                 {
                     $sam = $user.Properties.Item("sAMAccountName")[0]
                     $dn =  $user.Properties.Item("distinguishedName")[0]
@@ -522,8 +500,8 @@ function main{
                 }
                 If ($ProgressBar) 
                 {
-                    Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
-                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$amount)*100)
+                    Write-Progress -Activity "Processing $($global:amount) Users" -Status ("Count: 
+                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$global:amount)*100)
                 }
             }
             #$arrayDN
@@ -561,18 +539,18 @@ function main{
     elseif($amountCheck -eq $true)
     {
         Write-Host
-        Write-Verbose -Message  "Please be patient whilst the script retrieves all $amount distinguished names..." -Verbose
+        Write-Verbose -Message  "Please be patient whilst the script retrieves all $global:amount distinguished names..." -Verbose
         foreach ($user  in $userObjects)
         {
-            if($count -lt $amount)
+            if($count -lt $global:amount)
             {
                 tracking
                 $TotalUsersProcessed++
                 $count++
                 If ($ProgressBar) 
                 {                
-                    Write-Progress -Activity "Processing $($amount) Users" -Status ("Count: 
-                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$amount)*100)              
+                    Write-Progress -Activity "Processing $($global:amount) Users" -Status ("Count: 
+                    $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$global:amount)*100)              
                 }
             
             }
@@ -594,10 +572,8 @@ function main{
         }
     }
 }
-
 #optional choices
 function optional{
-
     write-host
     write-host " 1. Get distinguished name "
     write-host " 2. Get all supplied attributes"
@@ -616,8 +592,8 @@ function optional{
         exit
     }
     #Amount
-    $amount = Read-Host -Prompt "Amount of data (Enter to get all data)"
-    if($amount -eq ""){        
+    $global:amount = Read-Host -Prompt "Amount of data (Enter to get all data)"
+    if($global:amount -eq ""){        
         $amountCheck = $false
     }
     else
@@ -664,11 +640,7 @@ if($exportedToTxt -eq $true){
         Write-Host
         Write-Host "Data has been exported to $outFileTxt" -foregroundcolor "magenta"
 }
-
-
-
 $global:IncludeImages = New-Object System.Collections.ArrayList 
-#[byte[]]$file = Get-Content image.jpeg -Encoding byte
 $global:check= 0
 $global:outFilePicPie = $($PSScriptRoot)+"\Pie-$($dateTimeFile)-$($global:check).jpeg"
 #PIE
@@ -677,7 +649,7 @@ $emailPer = ($global:ea * 100)/$userCount
 $emailPer= [math]::Round($emailPer,2)
 $noEmailPer=  100 - $emailPer
 $mailHash = @{"Email Set"=$emailPer;"No Email"=$noEmailPer}
-    #Account expires
+    #Account expired
 $accExPer = ($global:accEx *100)/$userCount
 $accExPer = [math]::Round($accExPer,2)
 $accNotExPer = 100 - $accExPer
@@ -687,13 +659,30 @@ $accDisPer = ($global:accDisStatus * 100)/$userCount
 $accDisPer = [math]::Round($accDisPer,2)
 $accNoDisPer = 100 - $accDisPer
 $accStatusHash = @{"Disable"="$accDisPer";"None-Disbale"="$accNoDisPer"}
-
+    #Smart Card required
+$smartRePer = ($global:smartRe * 100)/$userCount
+$smartRePer = [math]::Round($smartRePer,2)
+$smartNotRePer = 100 - $smartRePer
+$smartReHash = @{"Requires"="$smartRePer";"Not Required"="$smartNotRePer"}
+    #Password Required
+$passReNotPer = ($global:passNotRe *100)/$userCount
+$passReNotPer = [Math]::Round($passReNotPer,2)
+$passRePer =  100 - $passReNotPer
+$passReHash = @{"Not Required"="$passReNotPer";"Required"="$passRePer"}
+    #Password Changed
+$passChangeNotAllPer = ($global:passChangeNotAll* 100)/$userCount
+$passChangeNotAllPer = [math]::Round($passChangeNotAllPer,2)
+$passChangeAllper =  100 - $passChangeNotAllPer
+$passChangedHash = @{"Allowed"="$passChangeAllper";"Not Allowed"="$passChangeNotAllPer";}
+    #Password Never Expired Set
+$passExpSetPer =($global:passNExpSet* 100)/$userCount
+$passExpSetPer = [math]::Round($passExpSetPer)
+$passExpNoSetPer= 100 - $passExpSetPer
+$passExpHash = @{"Set"="$passExpSetPer";"None-set"="$passExpNoSetPer"}
 Function drawPie {
     param($hash,
     [string]$title
     )
-  
-
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Windows.Forms.DataVisualization
     $Chart = New-object System.Windows.Forms.DataVisualization.Charting.Chart
@@ -717,49 +706,45 @@ Function drawPie {
     $Chart.BackColor = [System.Drawing.Color]::White
     $Chart.BorderColor = 'Black'
     $Chart.BorderDashStyle = 'Solid'
-
     $ChartTitle = New-Object System.Windows.Forms.DataVisualization.Charting.Title
     $ChartTitle.Text = $title
     $Font = New-Object System.Drawing.Font @('Microsoft Sans Serif','12', [System.Drawing.FontStyle]::Bold)
     $ChartTitle.Font =$Font
     $Chart.Titles.Add($ChartTitle)
-
     $testPath = Test-Path $global:outFilePicPie
     if($testPath -eq $True){
         $global:check += 1      
         $global:outFilePicPie = $($PSScriptRoot)+"\Pie-$($dateTimeFile)-$($global:check).jpeg"                 
     }
     $global:IncludeImages.Add($global:outFilePicPie)
-    $Chart.SaveImage($outFilePicPie, 'jpeg')
-    
-    
+    $Chart.SaveImage($outFilePicPie, 'jpeg')  
 }
-    
-
-
 #BAR
     #lastLogon
 $lastLogonHash = [ordered]@{"2017"="$global:last2017";"2016"="$global:last2016"
             ;"2015"="$global:last2015";"<2015"="$global:otherLast";"Never"="$global:NeverLogon"}
 $global:check1= 0
 $global:outFilePicBar = $($PSScriptRoot)+"\Bar-$($dateTimeFile)-$($global:check).jpeg"
-
     #PassLastSet
 $passSetHash = [ordered]@{"2017"="$global:passSet2017";"2016"="$global:passSet2016";"2015"="$global:passSet2015";
                                     "<2015"="$global:otherPassSet";"Not Set"="$global:noLastSet"}
     #BadPassCount
 $badPassCHash = [ordered]@{"3"="$global:basPassC3";"2"="$global:basPassC2";"1"="$global:basPassC1"
                                        "0"="$global:basPassC0";"N/A"="$global:noBadSet" }
-
     #Last bad Attempt
 $lastBadLogHash = [ordered]@{"2017"="$global:badlog2017";"2016"="$global:badlog2016";"2015"="$global:badlog2015"
-                                              "Unknown"="$global:uknownBadLog";"Not set"="$global:noBadLogSet"}
+                                         "Unknown"="$global:uknownBadLog";"Not set"="$global:noBadLogSet"}
+    #password Age   
+$ageHash = [ordered]@{"2017"="$global:ageDate2017";"2016"="$global:ageDate2016";"2015"="$global:ageDate2015"
+                              "N/1"="$global:ageNA";"<2015"="$global:otherAgeDAte" }
+    #Last Modi
+$lastModihash = [ordered]@{"2017"="$global:modi2017";"2016"="$global:modi2016";"2015"="$global:modi2015"
+                                "<2015"="$global:otherModi"}
 
 function drawBar{
     param(
     $hash,[string]$title
-    )
-    
+    ) 
     Add-Type -AssemblyName System.Windows.Forms
     Add-Type -AssemblyName System.Windows.Forms.DataVisualization
     $Chart1 = New-object System.Windows.Forms.DataVisualization.Charting.Chart
@@ -774,16 +759,13 @@ function drawBar{
     $ChartArea1.AxisY.Title = "Figures"
     $ChartArea1.AxisY.Maximum = $userCount
     $ChartArea1.AxisY.Interval = 10
-    #$ChartArea1.AxisY.IntervalOffset = 5
     $Chart1.Width = 700
     $Chart1.Height = 400
     $Chart1.Left = 10
     $Chart1.Top = 10
     $Chart1.BackColor = [System.Drawing.Color]::White
     $Chart1.BorderColor = 'Black'
-    $Chart1.BorderDashStyle = 'Solid'
-    
-    
+    $Chart1.BorderDashStyle = 'Solid'      
     $ChartTitle1 = New-Object System.Windows.Forms.DataVisualization.Charting.Title
     $ChartTitle1.Text = $title
     $Font1 = New-Object System.Drawing.Font @('Microsoft Sans Serif','12', [System.Drawing.FontStyle]::Bold)
@@ -793,27 +775,134 @@ function drawBar{
     $testPath = Test-Path $global:outFilePicBar
     if($testPath -eq $True){
         $global:check1 += 1      
-        $global:outFilePicBar = $($PSScriptRoot)+"\Bar-$($dateTimeFile)-$($global:check1).jpeg"
-        
-            
+        $global:outFilePicBar = $($PSScriptRoot)+"\Bar-$($dateTimeFile)-$($global:check1).jpeg"         
     }
     $global:IncludeImages.Add($global:outFilePicBar)
     $Chart1.SaveImage("$outFilePicBar", 'jpeg')
-    
-
-
 }
+drawPie -hash $mailHash -title "Email" |Out-Null
+drawPie -hash $accExHash -title "Account Expired"|Out-Null
+drawPie -hash $accStatusHash -title "Account Status"|Out-Null
+drawPie -hash $smartReHash -title "Smart Card Required"|Out-Null
+drawPie -hash $passReHash -title "Password Required"|Out-Null
+drawPie -hash $passChangedHash -title "Password CANNOT Change"|Out-Null
+drawPie -hash $passExpHash -title "Never Expired Password Settings"|Out-Null
+drawBar -hash $lastLogonHash -title  "Last Logon Time"|Out-Null
+drawBar -hash $passSetHash -title "Password Last Changed"|Out-Null
+drawBar -Hash $badPassCHash -title "Bad Password Count"|Out-Null
+drawBar -hash $lastBadLogHash -title "Last bad Attempt date"|Out-Null
+drawBar -hash $ageHash -title "Password Expired Date"|Out-Null
+drawBar -hash $lastModihash -title "Last Modified Date"|Out-Null
+$userName = Get-ADUser -filter * -Properties DistinguishedName| ?{$_.sAMAccountName -match $env:UserName }|select Name|Out-String
+$userName = $userName -replace '-', ' ' -replace 'Name', ''
+$userName = $userName.Trim()
+$trustedDo = Get-ADTrust -Filter * -Server $Domain | select Name |Out-String
+$trustedDo = $trustedDo  -replace '-','' -replace 'Name','' 
+$trustedDo =$trustedDo.Trim()
+$adForest =  (get-ADForest -Server $Domain).domains | Out-String
+if([string]::IsNullOrEmpty($global:amount)){
+    $global:amount = $userCount
+}
+$admin = Get-ADGroupMember "Domain ADmins" -Server $Domain| select name,distinguishedName |measure
+$admin = $admin.count
+$domainCName = Get-ADDomainController -Filter * -Server $Domain| select Name|Out-String
+$domainCName = $domainCName -replace '-', ' ' -replace 'Name', ''
+$domainCName = $domainCName.Trim()
+$domainCoper = Get-ADDomainController -Filter * -Server $Domain| select operatingsystem|Out-String
+$domainCoper = $domainCoper -replace '-', ' ' -replace 'Name', '' -replace 'operatingsystem',''
+$domainCoper = $domainCoper.Trim()
+$ipAddress = Get-NetIPAddress | ?{($_.InterfaceAlias -match "Public") -and ($_.AddressFamily -match "Ipv4")}|select IPAddress|Out-String
+$ipAddress = $ipAddress -replace '-', ' ' -replace 'IPAddress', ''
+$ipAddress = $ipAddress.Trim()
+$body =@'
+<h1> Forest Report </h1>
+<p><ins><b>I.<b> Information<ins></p>
+<div class="tabofexecu">
+    <table class="tabexecu" >
+ 
+          <tr>
+            <td>Object Category:</td>
+            <td>{8}</td> 
+          </tr>
+          <tr>
+            <td>Object Class: </td>
+            <td>{9}</td> 
+          </tr>
+  
+          <tr>
+            <td>Amount of Data: </td>
+            <td>{10}</td> 
+          </tr>      
+    </table>
+<div>
 
+<div class="tablehere">
+    <table class="tabinfo" > 
+          <tr>
+            <td>Domain:</td>
+            <td>{0}</td> 
+          </tr>
+          <tr>
+            <td>User Domain: </td>
+            <td>{1}</td> 
+          </tr>
+          <tr>
+            <td>Computer Name:</td>
+            <td>{2}</td> 
+          </tr>
+          <tr>
+            <td>IP Address:</td>
+            <td>{14}</td> 
+          </tr>
+          <tr>
+            <td>Reported by: </td>
+            <td>{3}</td> 
+          </tr>
+          <tr>
+            <td>Execution Date: </td>
+            <td>{4}</td> 
+          </tr>
+          <tr>
+            <td>Retrieved Data from: </td>
+            <td>{5}</td> 
+          </tr>
+    </table>
+</div>
 
-drawPie -hash $mailHash -title "Mail"
-drawPie -hash $accExHash -title "Account Expires"
-drawPie -hash $accStatusHash -title "Account Status"
-drawBar -hash $lastLogonHash -title  "Last Logon Time"
-drawBar -hash $passSetHash -title "Password Last Changed"
-drawBar -Hash $badPassCHash -title "Bad Password Count"
-drawBar -hash $lastBadLogHash -title "Last bad Attempt date"
-$IncludeImage
-#$global:IncludeImages
+<p><ins><b>II.<b> Domain Summary<ins></p>
+<div  class="secTable">
+    <table class="tabforest" > 
+          <tr>
+            <td>Number of Domain Admins:</td>
+            <td>{11}</td> 
+          </tr>
+
+          <tr>
+            <td>Forest Domains:</td>
+            <td>{6}</td> 
+          </tr>
+          <tr>
+            <td>Trusted Domains: </td>
+            <td>{7}</td> 
+          </tr>
+    </table>
+</div>
+<div class="tabdomaincon">
+    <table class="tabdomain" > 
+        <tr>
+            <th>Domain Controllers</th>
+            <th>Operating System</th> 
+        </tr>
+        <tr>           
+            <td>{12}</td> 
+            <td>{13}</td> 
+        </tr>      
+    </table>
+<div>
+
+<p><ins><b>III.<b> Data Illustration<ins></p>
+'@ -f  $Domain ,$env:UserDomain, $env:ComputerName,$userName,$(get-date),$outFile,$adForest,$trustedDo,$objectCategory,$objectClass,$global:amount,$admin,$domainCName,$domainCoper,$ipAddress
+
 function Generate-Html {
     Param(
         [Parameter()]
@@ -825,7 +914,7 @@ function Generate-Html {
         $ImageBits = [Convert]::ToBase64String((Get-Content $_ -Encoding Byte))
         "<img src=data:image/jpeg;base64,$($ImageBits) alt='My Image'/>"
     }
-        ConvertTo-Html -Body $style -PreContent $imageHTML |
+        ConvertTo-Html -Body $body -PreContent $imageHTML -Title "Report on $Domain" -CssUri "style.css" |
         Out-File "C:\Users\p998wph\Documents\Ender\test2.htm"
     }
 }
@@ -835,7 +924,7 @@ Generate-Html -IncludeImages $global:IncludeImages
 
 foreach($image in $IncludeImages){
 
-    rm $image
+    rm $image 
 }
 #Finish
 Write-Host
