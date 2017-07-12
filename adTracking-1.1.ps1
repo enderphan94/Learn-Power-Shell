@@ -208,6 +208,7 @@ $global:modi2015 =0
 $global:modi2016=0
 $global:modi2017=0
 $global:otherModi=0
+$global:noneModi=0
 Function tracking
 {
     $dn =  $user.Properties.Item("distinguishedName")[0]    
@@ -223,30 +224,37 @@ Function tracking
 	$lastFailedAt = $user.Properties.item("badPasswordTime")[0]
     $Description = $user.Properties.item("Description")[0] 
     #last Logon
-    if($logon.Count -eq 0)
-    {
-        $lastLogon = "Never logon"
-        $global:NeverLogon++
-    }
-    else
-    {        
-        $lastLogon = [datetime]::fromfiletime($logon)
-        $lastLogon= $lastLogon.ToString("yyyy/MM/dd")
+    #if($logon.Count -eq 0)
+    #{
+    #    $lastLogon = "Never logon"
+    #    
+    #}
+    #else
+    #{        
+        $lastLogon = [datetime]::fromfiletime($logon)        
         
-        if($lastLogon.split("/")[0] -eq 2015){
-            $global:last2015++
+        if($lastLogon -eq $("1/1/1601 01:00:00"|get-date)){
+            $lastLogon = "Never"
+            $global:NeverLogon++
         }
+        else{
+            $lastLogon= $lastLogon.ToString("yyyy/MM/dd")
+        
+            if($lastLogon.split("/")[0] -eq 2015){
+                $global:last2015++
+            }
      
-        elseif ($lastLogon.split("/")[0] -eq 2016){
-            $global:last2016++
-        }
-        elseif ($lastLogon.split("/")[0] -eq 2017){
-            $global:last2017++
-        }else{
+            elseif ($lastLogon.split("/")[0] -eq 2016){
+                $global:last2016++
+            }
+            elseif ($lastLogon.split("/")[0] -eq 2017){
+                $global:last2017++
+            }else{
 
-            $global:otherLast++
-        }          
-    }   
+                $global:otherLast++
+            }        
+        }  
+    #}   
     #password last set
     if($passwordLS -eq 0)
     {         
@@ -366,27 +374,35 @@ Function tracking
     if( $accountDis -band 0x10000){
         $passNExp ="Never Expires is set"
         $global:passNExpSet++
+        
     }
     else
     {
         $passNExp = "None Set"
+        $passTrue = $true
     }  
 
     # Last Modified
-    if($lastModi){    
-    $lastModi = $lastModi.ToString("yyyy/MM/dd")
-    if($lastModi.split("/")[0] -eq 2015){
-         $global:modi2015++
-    }       
-    elseif($lastModi.split("/")[0] -eq 2016){
-         $global:modi2016++
+    #if($lastModi){
+    if($lastModi -ne $null){   
+        $lastModi = $lastModi.ToString("yyyy/MM/dd")
+        if($lastModi.split("/")[0] -eq 2015){
+             $global:modi2015++
+        }       
+        elseif($lastModi.split("/")[0] -eq 2016){
+             $global:modi2016++
+        }
+        elseif($lastModi.split("/")[0] -eq 2017){
+             $global:modi2017++
+        }
+         else{
+             $global:otherModi++
+        }
     }
-    elseif($lastModi.split("/")[0] -eq 2017){
-         $global:modi2017++
-    }
-     else{
-         $global:otherModi++
-    }
+    else{
+        $lastModi = "N/A"
+        $global:noneModi++
+
     }
     #Datetime bad Logon
     if ($lastFailedAt -eq 0){
@@ -424,7 +440,7 @@ Function tracking
         $expDAte = "N/A"
         $global:ageNA++
     }
-    else{
+    elseif($passTrue -eq $true){
         $expDAte = $expDAte.ToString("yyyy/MM/dd")
         if($expDAte.split("/")[0] -eq 2015){
             $global:ageDate2015++
@@ -439,7 +455,10 @@ Function tracking
             $global:otherAgeDAte++
         }
        
-    }   
+    }
+    else{
+        $expDAte = "N/A"
+    } 
     #$lockoutDuration
     $obj = New-object -TypeName psobject
     $obj | Add-Member -MemberType NoteProperty -Name "Distinguished Name" -Value $dn
@@ -464,7 +483,7 @@ Function tracking
     }
     else
     {
-        $obj
+        $lastModi
     }      
 }
 #Main run here
@@ -645,39 +664,39 @@ $global:check= 0
 $global:outFilePicPie = $($PSScriptRoot)+"\Pie-$($dateTimeFile)-$($global:check).jpeg"
 #PIE
     #Email
-$emailPer = ($global:ea * 100)/$userCount
-$emailPer= [math]::Round($emailPer,2)
-$noEmailPer=  100 - $emailPer
-$mailHash = @{"Email Set"=$emailPer;"No Email"=$noEmailPer}
+$emailPer = $global:ea 
+#$emailPer= [math]::Round($emailPer,2)
+$noEmailPer=  $userCount - $emailPer
+$mailHash = @{"Available"=$emailPer;"Unavailable"=$noEmailPer}
     #Account expired
-$accExPer = ($global:accEx *100)/$userCount
-$accExPer = [math]::Round($accExPer,2)
-$accNotExPer = 100 - $accExPer
-$accExHash = @{"Expired"="$accExPer";"Not Expired"="$accNotExPer"}
+$accExPer = $global:accEx
+#$accExPer = [math]::Round($accExPer,2)
+$accNotExPer = $userCount - $accExPer
+$accExHash = @{"Expired"="$accExPer";"Unexpired"="$accNotExPer"}
     #Account Status
-$accDisPer = ($global:accDisStatus * 100)/$userCount
-$accDisPer = [math]::Round($accDisPer,2)
-$accNoDisPer = 100 - $accDisPer
-$accStatusHash = @{"Disable"="$accDisPer";"None-Disbale"="$accNoDisPer"}
+$accDisPer = $global:accDisStatus 
+#$accDisPer = [math]::Round($accDisPer,2)
+$accNoDisPer = $userCount - $accDisPer
+$accStatusHash = @{"Disabled"="$accDisPer";"Enabled"="$accNoDisPer"}
     #Smart Card required
-$smartRePer = ($global:smartRe * 100)/$userCount
-$smartRePer = [math]::Round($smartRePer,2)
-$smartNotRePer = 100 - $smartRePer
-$smartReHash = @{"Requires"="$smartRePer";"Not Required"="$smartNotRePer"}
+$smartRePer = $global:smartRe
+#$smartRePer = [math]::Round($smartRePer,2)
+$smartNotRePer = $userCount - $smartRePer
+$smartReHash = @{"Required"="$smartRePer";"Not Required"="$smartNotRePer"}
     #Password Required
-$passReNotPer = ($global:passNotRe *100)/$userCount
-$passReNotPer = [Math]::Round($passReNotPer,2)
-$passRePer =  100 - $passReNotPer
+$passReNotPer = $global:passNotRe 
+#$passReNotPer = [Math]::Round($passReNotPer,2)
+$passRePer =  $userCount - $passReNotPer
 $passReHash = @{"Not Required"="$passReNotPer";"Required"="$passRePer"}
     #Password Changed
-$passChangeNotAllPer = ($global:passChangeNotAll* 100)/$userCount
-$passChangeNotAllPer = [math]::Round($passChangeNotAllPer,2)
-$passChangeAllper =  100 - $passChangeNotAllPer
+$passChangeNotAllPer = $global:passChangeNotAll
+#$passChangeNotAllPer = [math]::Round($passChangeNotAllPer,2)
+$passChangeAllper =  $userCount - $passChangeNotAllPer
 $passChangedHash = @{"Allowed"="$passChangeAllper";"Not Allowed"="$passChangeNotAllPer";}
     #Password Never Expired Set
-$passExpSetPer =($global:passNExpSet* 100)/$userCount
-$passExpSetPer = [math]::Round($passExpSetPer)
-$passExpNoSetPer= 100 - $passExpSetPer
+$passExpSetPer =$global:passNExpSet
+#$passExpSetPer = [math]::Round($passExpSetPer)
+$passExpNoSetPer= $userCount - $passExpSetPer
 $passExpHash = @{"Set"="$passExpSetPer";"None-set"="$passExpNoSetPer"}
 Function drawPie {
     param($hash,
@@ -698,7 +717,7 @@ Function drawPie {
     $Legend.IsEquallySpacedItems = $True
     $Legend.BorderColor = 'Black'
     $Chart.Legends.Add($Legend)
-    $chart.Series["Series1"].LegendText = "#VALX (#VALY%)"
+    $chart.Series["Series1"].LegendText = "#VALX (#VALY)"
     $Chart.Width = 700
     $Chart.Height = 400
     $Chart.Left = 10
@@ -721,25 +740,23 @@ Function drawPie {
 }
 #BAR
     #lastLogon
-$lastLogonHash = [ordered]@{"2017"="$global:last2017";"2016"="$global:last2016"
-            ;"2015"="$global:last2015";"<2015"="$global:otherLast";"Never"="$global:NeverLogon"}
+$lastLogonHash = [ordered]@{"Never"="$global:NeverLogon";"<2015"="$global:otherLast";"2015"="$global:last2015";"2016"="$global:last2016";"2017"="$global:last2017"}
 $global:check1= 0
 $global:outFilePicBar = $($PSScriptRoot)+"\Bar-$($dateTimeFile)-$($global:check).jpeg"
     #PassLastSet
-$passSetHash = [ordered]@{"2017"="$global:passSet2017";"2016"="$global:passSet2016";"2015"="$global:passSet2015";
-                                    "<2015"="$global:otherPassSet";"Not Set"="$global:noLastSet"}
+$passSetHash = [ordered]@{"Not Set"="$global:noLastSet";"<2015"="$global:otherPassSet";"2015"="$global:passSet2015";
+                        "2016"="$global:passSet2016";"2017"="$global:passSet2017";}
     #BadPassCount
-$badPassCHash = [ordered]@{"3"="$global:basPassC3";"2"="$global:basPassC2";"1"="$global:basPassC1"
-                                       "0"="$global:basPassC0";"N/A"="$global:noBadSet" }
+$badPassCHash = [ordered]@{"N/A"="$global:noBadSet";"0"="$global:basPassC0";"1"="$global:basPassC1";
+                            "2"="$global:basPassC2";"3"="$global:basPassC3" }
     #Last bad Attempt
-$lastBadLogHash = [ordered]@{"2017"="$global:badlog2017";"2016"="$global:badlog2016";"2015"="$global:badlog2015"
-                                         "Unknown"="$global:uknownBadLog";"Not set"="$global:noBadLogSet"}
+$lastBadLogHash = [ordered]@{"Unknown"="$global:uknownBadLog";"Not set"="$global:noBadLogSet";"<2015"="$global:otherBadlog";"2015"="$global:badlog2015";"2016"="$global:badlog2016";"2017"="$global:badlog2017"}
     #password Age   
-$ageHash = [ordered]@{"2017"="$global:ageDate2017";"2016"="$global:ageDate2016";"2015"="$global:ageDate2015"
-                              "N/1"="$global:ageNA";"<2015"="$global:otherAgeDAte" }
+$ageHash = [ordered]@{"N/A"="$global:ageNA";"<2015"="$global:otherAgeDAte";"2015"="$global:ageDate2015";
+                                "2016"="$global:ageDate2016";"2017"="$global:ageDate2017" }
     #Last Modi
-$lastModihash = [ordered]@{"2017"="$global:modi2017";"2016"="$global:modi2016";"2015"="$global:modi2015"
-                                "<2015"="$global:otherModi"}
+$lastModihash = [ordered]@{ "N/A"=$global:noneModi++;"<2015"="$global:otherModi";"2015"="$global:modi2015";
+                                "2016"="$global:modi2016";"2017"="$global:modi2017"}
 
 function drawBar{
     param(
@@ -751,16 +768,53 @@ function drawBar{
     $ChartArea1 = New-Object System.Windows.Forms.DataVisualization.Charting.ChartArea
     $Series1 = New-Object -TypeName System.Windows.Forms.DataVisualization.Charting.Series
     $ChartTypes1 = [System.Windows.Forms.DataVisualization.Charting.SeriesChartType]
-    $Series1.ChartType = $ChartTypes1::Bar
+    #$Series1.ChartType = $ChartTypes1::Bar
     $Chart1.Series.Add($Series1)
     $Chart1.ChartAreas.Add($ChartArea1)
-    $Chart1.Series['Series1'].Points.DataBindXY($hash.keys, $hash.values)
+    #$Chart1.Series.Add("dataset") | Out-Null
+    $Chart1.Series[‘Series1’].Points.DataBindXY($hash.keys, $hash.values)
+    $chart1.Series[0].ChartType = [System.Windows.Forms.DataVisualization.Charting.SeriesChartType]::Column 
+    #$Chart1.Series['Series1'].Points.DataBindXY($hash.keys, $hash.values)
     $ChartArea1.AxisX.Title = "Years"
     $ChartArea1.AxisY.Title = "Figures"
-    $ChartArea1.AxisY.Maximum = $userCount
-    $ChartArea1.AxisY.Interval = 10
-    $Chart1.Width = 700
-    $Chart1.Height = 400
+    $Chart1.Series[‘Series1’].IsValueShownAsLabel = $True
+    $Chart1.Series[‘Series1’].SmartLabelStyle.Enabled = $True
+    $chart1.Series[‘Series1’]["LabelStyle"] = "TopLeft"
+    #$chart1.Series[0]["PieLabelStyle"] = "Outside" 
+    ##$chart1.Series[0]["DrawingStyle"] = "Emboss" 
+    #$chart1.Series[0]["PieLineColor"] = "Black" 
+    #$chart1.Series[0]["PieDrawingStyle"] = "Concave"
+
+    if($global:amount){
+        $ChartArea1.AxisY.Maximum = $global:amount
+        if($userCount -ge 1000){
+            $ChartArea1.AxisY.Interval = $inter - ($inter %100)
+            $inter = [math]::Round($userCount/10,0)
+        }elseif($userCount -ge 100){
+            $ChartArea1.AxisY.Interval = $inter - ($inter %10)
+            $inter = [math]::Round($userCount/20,0)
+        }else{
+            $ChartArea1.AxisY.Interval = $inter - ($inter %10)
+            $inter = [math]::Round($userCount/10,0)
+        }
+    }else{
+        $ChartArea1.AxisY.Maximum = $userCount
+        
+        if($userCount -ge 1000){
+            $ChartArea1.AxisY.Interval = $inter - ($inter %100)
+            $inter = [math]::Round($userCount/10,0)
+        }elseif($userCount -ge 100){
+            $ChartArea1.AxisY.Interval = $inter - ($inter %10)
+            $inter = [math]::Round($userCount/20,0)
+        }else{
+            $ChartArea1.AxisY.Interval = $inter - ($inter %10)
+            $inter = [math]::Round($userCount/10,0)
+        }
+
+    }
+    
+    $Chart1.Width = 1000
+    $Chart1.Height = 700
     $Chart1.Left = 10
     $Chart1.Top = 10
     $Chart1.BackColor = [System.Drawing.Color]::White
@@ -780,19 +834,19 @@ function drawBar{
     $global:IncludeImages.Add($global:outFilePicBar)
     $Chart1.SaveImage("$outFilePicBar", 'jpeg')
 }
-drawPie -hash $mailHash -title "Email" |Out-Null
-drawPie -hash $accExHash -title "Account Expired"|Out-Null
+drawPie -hash $mailHash -title "Emails Availability" |Out-Null
+drawPie -hash $accExHash -title "Expired Accounts"|Out-Null
 drawPie -hash $accStatusHash -title "Account Status"|Out-Null
-drawPie -hash $smartReHash -title "Smart Card Required"|Out-Null
+drawPie -hash $smartReHash -title "Smart Cards Required"|Out-Null
 drawPie -hash $passReHash -title "Password Required"|Out-Null
 drawPie -hash $passChangedHash -title "Password CANNOT Change"|Out-Null
-drawPie -hash $passExpHash -title "Never Expired Password Settings"|Out-Null
-drawBar -hash $lastLogonHash -title  "Last Logon Time"|Out-Null
+drawPie -hash $passExpHash -title "Password Never Expired Settings"|Out-Null
+drawBar -hash $lastLogonHash -title  "Last Logon Date"|Out-Null
 drawBar -hash $passSetHash -title "Password Last Changed"|Out-Null
-drawBar -Hash $badPassCHash -title "Bad Password Count"|Out-Null
-drawBar -hash $lastBadLogHash -title "Last bad Attempt date"|Out-Null
-drawBar -hash $ageHash -title "Password Expired Date"|Out-Null
-drawBar -hash $lastModihash -title "Last Modified Date"|Out-Null
+#drawBar -Hash $badPassCHash -title "Bad Password Count"|Out-Null
+drawBar -hash $lastBadLogHash -title "Last Bad Logon Attempt"|Out-Null
+drawBar -hash $ageHash -title "Password Expiration Date"|Out-Null
+drawBar -hash $lastModihash -title "User's Objects Modification"|Out-Null
 $userName = Get-ADUser -filter * -Properties DistinguishedName| ?{$_.sAMAccountName -match $env:UserName }|select Name|Out-String
 $userName = $userName -replace '-', ' ' -replace 'Name', ''
 $userName = $userName.Trim()
@@ -912,7 +966,7 @@ function Generate-Html {
     if ($IncludeImages){
         $ImageHTML = $IncludeImages | % {
         $ImageBits = [Convert]::ToBase64String((Get-Content $_ -Encoding Byte))
-        "<img src=data:image/jpeg;base64,$($ImageBits) alt='My Image'/>"
+        "<center><img src=data:image/jpeg;base64,$($ImageBits) alt='My Image'/><center>"
     }
         ConvertTo-Html -Body $body -PreContent $imageHTML -Title "Report on $Domain" -CssUri "style.css" |
         Out-File "C:\Users\p998wph\Documents\Ender\test2.htm"
