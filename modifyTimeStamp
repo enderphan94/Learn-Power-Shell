@@ -1,0 +1,53 @@
+#Dev by Ender Phan
+# Retrieve information for the current domain. 
+$D = [system.directoryservices.activedirectory.Domain]::GetCurrentDomain() 
+$PDC = $D.PdcRoleOwner 
+$Domain = [ADSI]"LDAP://$D" 
+ 
+# Setup the DirectorySearcher object. 
+$Searcher = New-Object System.DirectoryServices.DirectorySearcher 
+$Searcher.PageSize = 200 
+$Searcher.SearchScope = "subtree" 
+$Searcher.Filter = "(&(objectCategory=person)(objectClass=user))"
+# Specify attribute values to retrieve. 
+$Searcher.PropertiesToLoad.Add("distinguishedName") > $Null 
+$Searcher.PropertiesToLoad.Add("modifyTimeStamp") > $Null 
+ 
+# Query every domain controller in the domain.
+
+$dnarr = New-Object System.Collections.ArrayList
+$Base = "LDAP://$D" 
+$Searcher.SearchRoot = $Base 
+$Results = $Searcher.FindAll()
+
+ForEach ($Result In $Results) 
+{ 
+
+            $DN = $Result.Properties.Item("distinguishedName")
+            $dnarr.add($DN)|Out-Null
+}
+
+foreach($dnn in $dnarr){
+                $lastmd = New-Object System.Collections.ArrayList
+                ForEach ($DC In $D.DomainControllers){
+                    $Server = $DC.Name
+                    $Base = "LDAP://$Server/" + $dnn
+                    $Searcher.SearchRoot = $Base 
+                    $Results2 = $Searcher.FindAll()
+                    ForEach ($Result2 In $Results2) 
+                    { 
+                         
+                        $DN2 = $Result2.Properties.Item("distinguishedName") 
+                        if($DN2 -eq $dnn){
+                        $modi = $Result2.Properties.Item("modifyTimeStamp")[0]
+                        $lastmd.Add($modi)|Out-Null
+                        } 
+                    } 
+                    
+                }
+      $lastModi = ($lastmd |measure -max).maximum
+    
+   """$dnn"",$lastModi"
+ }
+
+
