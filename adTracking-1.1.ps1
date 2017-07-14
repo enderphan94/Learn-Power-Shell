@@ -95,10 +95,10 @@ if($objectClass -eq ""){
     Write-Verbose -Message  "Objectclass can't be null" -Verbose
     exit    
 }
-$Domain = $Domain.PdcRoleOwner
+$PDC = $Domain.PdcRoleOwner
 $ADSearch = New-Object System.DirectoryServices.DirectorySearcher
 #new empty ad search, search engine someth we can send queries to find out
-$ADSearch.SearchRoot ="LDAP://$Domain"
+$ADSearch.SearchRoot ="LDAP://$PDC"
 #where we wanna look in LDAP is Domain, because we don't wanna search from root
 #root is: $objDomain = New-Object System.DirectoryServices.DirectoryEntry
 $ADSearch.SearchScope = "subtree"
@@ -137,6 +137,70 @@ foreach($pro in $properies)
 }
 $ProgressBar = $True
 $userObjects = $ADSearch.FindAll()
+$dnarr = New-Object System.Collections.ArrayList
+$modiValues = New-object System.Collections.ArrayList
+Function modiScan{
+
+    forEach ($users In $userObjects) 
+    { 
+
+            $DN = $users.Properties.Item("distinguishedName")
+            $dnarr.add($DN)|Out-Null
+    }
+
+    foreach($dnn in $dnarr){
+                $lastmd = New-Object System.Collections.ArrayList
+                ForEach ($DC In $Domain.DomainControllers){
+                    $Server = $DC.Name
+                    $Base = "LDAP://$Server/" + $dnn
+                    $ADSearch.SearchRoot = $Base 
+                    $Results2 = $ADSearch.FindAll()
+                    ForEach ($Result2 In $Results2) 
+                    { 
+                         
+                        $DN2 = $Result2.Properties.Item("distinguishedName") 
+                        if($DN2 -eq $dnn){
+                        $modi = $Result2.Properties.Item("modifyTimeStamp")[0]
+                        $lastmd.Add($modi)|Out-Null
+                        } 
+                    } 
+                    
+                }
+      $lastModi = ($lastmd |measure -max).maximum
+      #$modiValues.Add($lastModi)
+      
+      if($lastModi -ne $null){   
+            $lastModi = $lastModi.ToString("yyyy/MM/dd")
+            if($lastModi.split("/")[0] -eq 2015){
+                 $global:modi2015++
+            }       
+            elseif($lastModi.split("/")[0] -eq 2016){
+                 $global:modi2016++
+            }
+            elseif($lastModi.split("/")[0] -eq 2017){
+                 $global:modi2017++
+            }
+             else{
+                 $global:otherModi++
+            }
+        }
+        else{
+            $lastModi = "N/A"
+            $global:noneModi++
+        }
+    
+     #$lastModi
+      $obj = New-Object -TypeName psobject
+      $obj | Add-Member -MemberType NoteProperty -Name "Users Objects modification" -Value $lastModi
+      #$obj | Export-Csv -Path "C:\Users\p998wph\Documents\Ender\here.csv" -NoTypeInformation -Append -Delimiter $Delimiter -Force
+      $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter -Force
+      #import-csv $outFile | select *,@{Name="Users Objects modification";Expression={$lastModi}}|Export-Csv "C:\Users\p998wph\Documents\Ender\here3.csv" -NoType
+   
+   }
+    
+    
+}
+
 $userCount =  $userObjects.Count
 $result = @()
 $count = 0
@@ -146,6 +210,7 @@ $dateTimeFile = ((Get-Date -Format s).ToString() -replace "[$invalidChars]","-")
 $ScriptPath = {Split-Path $MyInvocation.ScriptName}
 $outFile = $($PSScriptRoot)+"\$($Domain)-Report-$($dateTimeFile).csv"
 $outFileTxt = $($PSScriptRoot)+"\Report-$($dateTimeFile).txt"
+$outFileHTML = $($PSScriptRoot)+"\Report-$($dateTimeFile).html"
 $Delimiter = ","
 $NeverExpires = 9223372036854775807
 $userValue = @("32"
@@ -209,6 +274,8 @@ $global:modi2016=0
 $global:modi2017=0
 $global:otherModi=0
 $global:noneModi=0
+
+
 Function tracking
 {
     $dn =  $user.Properties.Item("distinguishedName")[0]    
@@ -219,25 +286,18 @@ Function tracking
     $passwordC = $user.Properties.Item("badpwdcount")[0]
     $accountEx = $user.Properties.Item("accountExpires")[0]
     $accountDis= $user.Properties.Item("userAccountControl")[0] 
-    $lastModi= $user.Properties.Item("modifyTimeStamp")[0]
+    #$lastModi= $user.Properties.Item("modifyTimeStamp")[0]
     $lockoutTime= $user.Properties.Item("lockoutTime")[0]
 	$lastFailedAt = $user.Properties.item("badPasswordTime")[0]
     $Description = $user.Properties.item("Description")[0] 
-    #last Logon
-    #if($logon.Count -eq 0)
-    #{
-    #    $lastLogon = "Never logon"
-    #    
-    #}
-    #else
-    #{        
-        $lastLogon = [datetime]::fromfiletime($logon)        
         
-        if($lastLogon -eq $("1/1/1601 01:00:00"|get-date)){
+    $lastLogon = [datetime]::fromfiletime($logon)        
+        
+    if($lastLogon -eq $("1/1/1601 01:00:00"|get-date)){
             $lastLogon = "Never"
             $global:NeverLogon++
-        }
-        else{
+    }
+    else{
             $lastLogon= $lastLogon.ToString("yyyy/MM/dd")
         
             if($lastLogon.split("/")[0] -eq 2015){
@@ -253,19 +313,19 @@ Function tracking
 
                 $global:otherLast++
             }        
-        }  
-    #}   
+     }  
+      
     #password last set
     if($passwordLS -eq 0)
     {         
-         $value = "Not set"
+         $value = "Never"
          $global:noLastSet++
     }
     else
     {         
          $value = [datetime]::fromfiletime($passwordLS)                
          if($value -eq $("1/1/1601 01:00:00" | Get-Date)){
-                $value = "Not set"   
+                $value = "Never"   
                 $global:noLastSet++ 
          }
          else{
@@ -383,27 +443,13 @@ Function tracking
     }  
 
     # Last Modified
-    #if($lastModi){
-    if($lastModi -ne $null){   
-        $lastModi = $lastModi.ToString("yyyy/MM/dd")
-        if($lastModi.split("/")[0] -eq 2015){
-             $global:modi2015++
-        }       
-        elseif($lastModi.split("/")[0] -eq 2016){
-             $global:modi2016++
-        }
-        elseif($lastModi.split("/")[0] -eq 2017){
-             $global:modi2017++
-        }
-         else{
-             $global:otherModi++
-        }
-    }
-    else{
-        $lastModi = "N/A"
-        $global:noneModi++
-
-    }
+    
+   
+    #$lastModi = modiScan
+    
+    
+        
+    
     #Datetime bad Logon
     if ($lastFailedAt -eq 0){
         $badLogOnTime = "Unknown"
@@ -413,7 +459,7 @@ Function tracking
         $badLogOnTime = [datetime]::fromfiletime($lastFailedAt)                
         if($badLogOnTime -eq $("1/1/1601 01:00:00" | Get-Date))
         {        
-            $badLogOnTime = "Not set"    
+            $badLogOnTime = "Never"    
             $global:noBadLogSet++
         }
         else{
@@ -453,8 +499,7 @@ Function tracking
         }
         else{
             $global:otherAgeDAte++
-        }
-       
+        }       
     }
     else{
         $expDAte = "N/A"
@@ -475,7 +520,7 @@ Function tracking
     $obj | Add-Member -MemberType NoteProperty -Name "Password Change" -Value $passChange  
     $obj | Add-Member -MemberType NoteProperty -Name "Never Expired Password Set" -Value $passNExp  
     $obj | Add-Member -MemberType NoteProperty -Name "Password Expiration Date" -Value $expDAte
-    $obj | Add-Member -MemberType NoteProperty -Name "Last Modified" -Value $lastModi    
+    #$obj | Add-Member -MemberType NoteProperty -Name "Last Modified" -Value $lastModi    
     $obj | Add-Member -MemberType NoteProperty -Name "Description" -Value $Description  
     if($exportCheck -eq $true){    
             $global:exportedToCSV = $true
@@ -483,12 +528,13 @@ Function tracking
     }
     else
     {
-        $lastModi
+        $lastModi 
     }      
 }
 #Main run here
 $cls = cls
 function main{
+    $ADSearch.SearchRoot ="LDAP://$Domain"
     # distinguished Name method
     $arrayDN = @()
     if($dna -eq $true)
@@ -634,8 +680,9 @@ function optional{
         Write-Verbose -Message  "Option is not valid" -Verbose
         exit
     }
-
+    
     main
+    
 }
 #Options
 if($type -eq 1)
@@ -651,9 +698,12 @@ else{
     Write-Verbose -Message  "Option is not valid" -Verbose
     exit
 }
+
+
 if($exportedToCSV -eq $true){
         Write-Host
         Write-Host "Data has been exported to $outFile" -foregroundcolor "magenta"
+        modiScan
 }
 if($exportedToTxt -eq $true){
         Write-Host
@@ -744,17 +794,18 @@ $lastLogonHash = [ordered]@{"Never"="$global:NeverLogon";"<2015"="$global:otherL
 $global:check1= 0
 $global:outFilePicBar = $($PSScriptRoot)+"\Bar-$($dateTimeFile)-$($global:check).jpeg"
     #PassLastSet
-$passSetHash = [ordered]@{"Not Set"="$global:noLastSet";"<2015"="$global:otherPassSet";"2015"="$global:passSet2015";
+$passSetHash = [ordered]@{"Never"="$global:noLastSet";"<2015"="$global:otherPassSet";"2015"="$global:passSet2015";
                         "2016"="$global:passSet2016";"2017"="$global:passSet2017";}
     #BadPassCount
 $badPassCHash = [ordered]@{"N/A"="$global:noBadSet";"0"="$global:basPassC0";"1"="$global:basPassC1";
                             "2"="$global:basPassC2";"3"="$global:basPassC3" }
     #Last bad Attempt
-$lastBadLogHash = [ordered]@{"Unknown"="$global:uknownBadLog";"Not set"="$global:noBadLogSet";"<2015"="$global:otherBadlog";"2015"="$global:badlog2015";"2016"="$global:badlog2016";"2017"="$global:badlog2017"}
+$lastBadLogHash = [ordered]@{"Unknown"="$global:uknownBadLog";"Never"="$global:noBadLogSet";"<2015"="$global:otherBadlog";"2015"="$global:badlog2015";"2016"="$global:badlog2016";"2017"="$global:badlog2017"}
     #password Age   
 $ageHash = [ordered]@{"N/A"="$global:ageNA";"<2015"="$global:otherAgeDAte";"2015"="$global:ageDate2015";
                                 "2016"="$global:ageDate2016";"2017"="$global:ageDate2017" }
     #Last Modi
+    
 $lastModihash = [ordered]@{ "N/A"=$global:noneModi++;"<2015"="$global:otherModi";"2015"="$global:modi2015";
                                 "2016"="$global:modi2016";"2017"="$global:modi2017"}
 
@@ -844,8 +895,9 @@ drawPie -hash $passExpHash -title "Password Never Expired Settings"|Out-Null
 drawBar -hash $lastLogonHash -title  "Last Logon Date"|Out-Null
 drawBar -hash $passSetHash -title "Password Last Changed"|Out-Null
 #drawBar -Hash $badPassCHash -title "Bad Password Count"|Out-Null
-drawBar -hash $lastBadLogHash -title "Last Bad Logon Attempt"|Out-Null
+drawBar -hash $lastBadLogHash -title "Last Bad Logon Attempts"|Out-Null
 drawBar -hash $ageHash -title "Password Expiration Date"|Out-Null
+
 drawBar -hash $lastModihash -title "User's Objects Modification"|Out-Null
 $userName = Get-ADUser -filter * -Properties DistinguishedName| ?{$_.sAMAccountName -match $env:UserName }|select Name|Out-String
 $userName = $userName -replace '-', ' ' -replace 'Name', ''
@@ -969,7 +1021,7 @@ function Generate-Html {
         "<center><img src=data:image/jpeg;base64,$($ImageBits) alt='My Image'/><center>"
     }
         ConvertTo-Html -Body $body -PreContent $imageHTML -Title "Report on $Domain" -CssUri "style.css" |
-        Out-File "C:\Users\p998wph\Documents\Ender\test2.htm"
+        Out-File $outFileHTML
     }
 }
 
