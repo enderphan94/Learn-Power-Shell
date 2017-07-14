@@ -139,6 +139,7 @@ $ProgressBar = $True
 $userObjects = $ADSearch.FindAll()
 $dnarr = New-Object System.Collections.ArrayList
 $modiValues = New-object System.Collections.ArrayList
+$outFileModi = $($PSScriptRoot)+"\$($Domain)-ReportModi-$($dateTimeFile).csv"
 Function modiScan{
 
     forEach ($users In $userObjects) 
@@ -191,11 +192,9 @@ Function modiScan{
     
      #$lastModi
       $obj = New-Object -TypeName psobject
-      $obj | Add-Member -MemberType NoteProperty -Name "Users Objects modification" -Value $lastModi
-      #$obj | Export-Csv -Path "C:\Users\p998wph\Documents\Ender\here.csv" -NoTypeInformation -Append -Delimiter $Delimiter -Force
-      $obj | Export-Csv -Path "$outFile" -NoTypeInformation -append -Delimiter $Delimiter -Force
-      #import-csv $outFile | select *,@{Name="Users Objects modification";Expression={$lastModi}}|Export-Csv "C:\Users\p998wph\Documents\Ender\here3.csv" -NoType
-   
+      $obj | Add-Member -MemberType NoteProperty -Name "modi" -Value $lastModi      
+      $obj | Export-Csv -Path "$outFileModi" -NoTypeInformation -append -Delimiter $Delimiter
+      
    }
     
     
@@ -211,6 +210,7 @@ $ScriptPath = {Split-Path $MyInvocation.ScriptName}
 $outFile = $($PSScriptRoot)+"\$($Domain)-Report-$($dateTimeFile).csv"
 $outFileTxt = $($PSScriptRoot)+"\Report-$($dateTimeFile).txt"
 $outFileHTML = $($PSScriptRoot)+"\Report-$($dateTimeFile).html"
+$outFileMeg = $($PSScriptRoot)+"\$($Domain)-FinalReport-$($dateTimeFile).csv"
 $Delimiter = ","
 $NeverExpires = 9223372036854775807
 $userValue = @("32"
@@ -702,8 +702,17 @@ else{
 
 if($exportedToCSV -eq $true){
         Write-Host
-        Write-Host "Data has been exported to $outFile" -foregroundcolor "magenta"
+        
         modiScan
+        $CSV1 = Import-Csv $outFileModi
+        $CSV2 = Import-Csv $outFile
+
+        $CSV2 | ForEach-Object -Begin {$i = 0} {  
+        $_ | Add-Member -MemberType NoteProperty -Name "User's Objects lastest Modification" -Value $CSV1[$i++].modi -PassThru 
+                    } | Export-Csv $outFileMeg -NoTypeInformation
+        rm $outFileModi
+        rm $outFile
+        Write-Host "Data has been exported to $outFileMeg" -foregroundcolor "magenta"
 }
 if($exportedToTxt -eq $true){
         Write-Host
