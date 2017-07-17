@@ -139,67 +139,7 @@ $ProgressBar = $True
 $userObjects = $ADSearch.FindAll()
 $dnarr = New-Object System.Collections.ArrayList
 $modiValues = New-object System.Collections.ArrayList
-$outFileModi = $($PSScriptRoot)+"\$($Domain)-ReportModi-$($dateTimeFile).csv"
-Function modiScan{
-
-    forEach ($users In $userObjects) 
-    { 
-
-            $DN = $users.Properties.Item("distinguishedName")
-            $dnarr.add($DN)|Out-Null
-    }
-
-    foreach($dnn in $dnarr){
-                $lastmd = New-Object System.Collections.ArrayList
-                ForEach ($DC In $Domain.DomainControllers){
-                    $Server = $DC.Name
-                    $Base = "LDAP://$Server/" + $dnn
-                    $ADSearch.SearchRoot = $Base 
-                    $Results2 = $ADSearch.FindAll()
-                    ForEach ($Result2 In $Results2) 
-                    { 
-                         
-                        $DN2 = $Result2.Properties.Item("distinguishedName") 
-                        if($DN2 -eq $dnn){
-                        $modi = $Result2.Properties.Item("modifyTimeStamp")[0]
-                        $lastmd.Add($modi)|Out-Null
-                        } 
-                    } 
-                    
-                }
-      $lastModi = ($lastmd |measure -max).maximum
-      #$modiValues.Add($lastModi)
-      
-      if($lastModi -ne $null){   
-            $lastModi = $lastModi.ToString("yyyy/MM/dd")
-            if($lastModi.split("/")[0] -eq 2015){
-                 $global:modi2015++
-            }       
-            elseif($lastModi.split("/")[0] -eq 2016){
-                 $global:modi2016++
-            }
-            elseif($lastModi.split("/")[0] -eq 2017){
-                 $global:modi2017++
-            }
-             else{
-                 $global:otherModi++
-            }
-        }
-        else{
-            $lastModi = "N/A"
-            $global:noneModi++
-        }
-    
-     #$lastModi
-      $obj = New-Object -TypeName psobject
-      $obj | Add-Member -MemberType NoteProperty -Name "modi" -Value $lastModi      
-      $obj | Export-Csv -Path "$outFileModi" -NoTypeInformation -append -Delimiter $Delimiter
-      
-   }
-    
-    
-}
-
+$Delimiter = ","
 $userCount =  $userObjects.Count
 $result = @()
 $count = 0
@@ -211,7 +151,102 @@ $outFile = $($PSScriptRoot)+"\$($Domain)-Report-$($dateTimeFile).csv"
 $outFileTxt = $($PSScriptRoot)+"\Report-$($dateTimeFile).txt"
 $outFileHTML = $($PSScriptRoot)+"\Report-$($dateTimeFile).html"
 $outFileMeg = $($PSScriptRoot)+"\$($Domain)-FinalReport-$($dateTimeFile).csv"
-$Delimiter = ","
+$outFileModi = $($PSScriptRoot)+"\$($Domain)-ReportModi-$($dateTimeFile).csv"
+
+
+<#
+Function BuildSearcher($LDAP_URI) {
+    $S = New-Object System.DirectoryServices.DirectorySearcher 
+    $S.PageSize = 100 
+    $S.SearchScope = "subtree" 
+    $S.Filter = "(&(objectCategory=person)(objectClass=user))"
+    $S.PropertiesToLoad.Add("distinguishedName")|Out-Null
+    $S.PropertiesToLoad.Add("modifyTimeStamp")|Out-Null
+    $S.SearchRoot = $LDAP_URI
+
+    return $S;
+}#>
+Function modiScan{
+     
+    forEach ($users In $userObjects) 
+    { 
+
+            $DN = $users.Properties.Item("distinguishedName")[0]
+            $dnarr.add($DN)|Out-Null
+    }
+    #$dnarr
+    foreach($dnn in $dnarr){
+                $lastmd = New-Object System.Collections.ArrayList
+                $Searcher = New-Object System.DirectoryServices.DirectorySearcher 
+                $Searcher.PageSize = 100 
+                $Searcher.SearchScope = "subtree" 
+                $Searcher.Filter = "(&(objectCategory=person)(objectClass=user))"
+                $Searcher.PropertiesToLoad.Add("distinguishedName")|Out-Null
+                $Searcher.PropertiesToLoad.Add("modifyTimeStamp")|Out-Null
+                ForEach ($DC In $Domain.DomainControllers){
+
+                    $Server = $DC.Name
+                    #$Base = "LDAP://$Server/"+$dnn
+                    #$Searcher = BuildSearcher("LDAP://$DC.Name"+$dnn)
+
+                    $Base = "LDAP://$Server/"+$dnn
+                    $Searcher.SearchRoot = $Base
+                    
+                    try{
+                        $Results2 = $Searcher.FindAll()
+                        ForEach ($Result2 In $Results2) 
+                        { 
+                         
+                            $DN2 = $Result2.Properties.Item("distinguishedName")[0]
+                            #$modi = $Result2.Properties.Item("modifyTimeStamp")[0]
+                            if($DN2 -eq $dnn){
+                                $modi = $Result2.Properties.Item("modifyTimeStamp")[0]
+                                if($modi){
+                                #"""$DN2,$modi"
+                                $lastmd.Add($modi)|Out-Null
+                            
+                                }
+                            } 
+                        }
+                    }catch{
+                        $error = $true
+                    }
+                     
+                }
+        if($error -eq $true){
+            $lastModi = "Not set"
+            $global:noneModi++
+        }
+        else{
+          $lastModi = ($lastmd |measure -max).maximum      
+          if($lastModi -ne $null){   
+                $lastModi = $lastModi.ToString("yyyy/MM/dd")
+                if($lastModi.split("/")[0] -eq 2015){
+                     $global:modi2015++
+                }       
+                elseif($lastModi.split("/")[0] -eq 2016){
+                     $global:modi2016++
+                }
+                elseif($lastModi.split("/")[0] -eq 2017){
+                     $global:modi2017++
+                }
+                 else{
+                     $global:otherModi++
+                }
+            }
+            else{
+                $lastModi = "N/A"
+                $global:noneModi++
+            }
+        }
+        $lastModi
+      $obj = New-Object -TypeName psobject
+      $obj | Add-Member -MemberType NoteProperty -Name "modi" -Value $lastModi      
+      $obj | Export-Csv -Path "$outFileModi" -NoTypeInformation -append -Delimiter $Delimiter
+      
+   }
+}
+modiScan
 $NeverExpires = 9223372036854775807
 $userValue = @("32"
 "64"
@@ -274,8 +309,6 @@ $global:modi2016=0
 $global:modi2017=0
 $global:otherModi=0
 $global:noneModi=0
-
-
 Function tracking
 {
     $dn =  $user.Properties.Item("distinguishedName")[0]    
@@ -532,7 +565,7 @@ Function tracking
     }      
 }
 #Main run here
-$cls = cls
+#$cls = cls
 function main{
     $ADSearch.SearchRoot ="LDAP://$Domain"
     # distinguished Name method
@@ -710,8 +743,8 @@ if($exportedToCSV -eq $true){
         $CSV2 | ForEach-Object -Begin {$i = 0} {  
         $_ | Add-Member -MemberType NoteProperty -Name "User's Objects lastest Modification" -Value $CSV1[$i++].modi -PassThru 
                     } | Export-Csv $outFileMeg -NoTypeInformation
-        rm $outFileModi
-        rm $outFile
+        #rm $outFileModi
+        #rm $outFile
         Write-Host "Data has been exported to $outFileMeg" -foregroundcolor "magenta"
 }
 if($exportedToTxt -eq $true){
@@ -906,8 +939,7 @@ drawBar -hash $passSetHash -title "Password Last Changed"|Out-Null
 #drawBar -Hash $badPassCHash -title "Bad Password Count"|Out-Null
 drawBar -hash $lastBadLogHash -title "Last Bad Logon Attempts"|Out-Null
 drawBar -hash $ageHash -title "Password Expiration Date"|Out-Null
-
-drawBar -hash $lastModihash -title "User's Objects Modification"|Out-Null
+drawBar -hash $lastModihash -title "User's Objects Lastest Modification"|Out-Null
 $userName = Get-ADUser -filter * -Properties DistinguishedName| ?{$_.sAMAccountName -match $env:UserName }|select Name|Out-String
 $userName = $userName -replace '-', ' ' -replace 'Name', ''
 $userName = $userName.Trim()
@@ -1016,7 +1048,7 @@ $body =@'
 <div>
 
 <p><ins><b>III.<b> Data Illustration<ins></p>
-'@ -f  $Domain ,$env:UserDomain, $env:ComputerName,$userName,$(get-date),$outFile,$adForest,$trustedDo,$objectCategory,$objectClass,$global:amount,$admin,$domainCName,$domainCoper,$ipAddress
+'@ -f  $Domain ,$env:UserDomain, $env:ComputerName,$userName,$(get-date),$outFileMeg,$adForest,$trustedDo,$objectCategory,$objectClass,$global:amount,$admin,$domainCName,$domainCoper,$ipAddress
 
 function Generate-Html {
     Param(
