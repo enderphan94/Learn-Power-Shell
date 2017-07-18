@@ -103,6 +103,7 @@ $ADSearch.SearchRoot ="LDAP://$PDC"
 #root is: $objDomain = New-Object System.DirectoryServices.DirectoryEntry
 $ADSearch.SearchScope = "subtree"
 $ADSearch.PageSize = 100
+$ADSearch.SizeLimit= 100
 $ADSearch.Filter = "(&(objectCategory=$objectCategory)(objectClass=$objectClass))"
 #where objectClass attribute are -eq to user
 #Atribute to search for: ObjectClass
@@ -166,6 +167,13 @@ Function BuildSearcher($LDAP_URI) {
 
     return $S;
 }#>
+$Searcher = New-Object System.DirectoryServices.DirectorySearcher 
+                $Searcher.PageSize = 100 
+                $Searcher.SizeLimit=100
+                $Searcher.SearchScope = "subtree" 
+                $Searcher.Filter = "(&(objectCategory=person)(objectClass=user))"
+                $Searcher.PropertiesToLoad.Add("distinguishedName")|Out-Null
+                $Searcher.PropertiesToLoad.Add("modifyTimeStamp")|Out-Null
 Function modiScan{
      
     forEach ($users In $userObjects) 
@@ -176,15 +184,11 @@ Function modiScan{
     }
     #$dnarr
     foreach($dnn in $dnarr){
+                $error = $false
                 $lastmd = New-Object System.Collections.ArrayList
-                $Searcher = New-Object System.DirectoryServices.DirectorySearcher 
-                $Searcher.PageSize = 100 
-                $Searcher.SearchScope = "subtree" 
-                $Searcher.Filter = "(&(objectCategory=person)(objectClass=user))"
-                $Searcher.PropertiesToLoad.Add("distinguishedName")|Out-Null
-                $Searcher.PropertiesToLoad.Add("modifyTimeStamp")|Out-Null
+                
                 ForEach ($DC In $Domain.DomainControllers){
-
+                    
                     $Server = $DC.Name
                     #$Base = "LDAP://$Server/"+$dnn
                     #$Searcher = BuildSearcher("LDAP://$DC.Name"+$dnn)
@@ -239,14 +243,14 @@ Function modiScan{
                 $global:noneModi++
             }
         }
-        $lastModi
+        #$lastModi
       $obj = New-Object -TypeName psobject
       $obj | Add-Member -MemberType NoteProperty -Name "modi" -Value $lastModi      
       $obj | Export-Csv -Path "$outFileModi" -NoTypeInformation -append -Delimiter $Delimiter
       
    }
 }
-modiScan
+#modiScan
 $NeverExpires = 9223372036854775807
 $userValue = @("32"
 "64"
@@ -565,7 +569,7 @@ Function tracking
     }      
 }
 #Main run here
-#$cls = cls
+$cls = cls
 function main{
     $ADSearch.SearchRoot ="LDAP://$Domain"
     # distinguished Name method
