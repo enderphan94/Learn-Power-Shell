@@ -67,4 +67,15 @@ You just need to follow the tools instruction
     + Fixed Account expires function
     
     + Change parameters to optional methods
+    
+- Cool Functions:
+
+    + Free to run the tool on current domain or trusted domain
+    
+    + List all trusted domain by using `Get-ADTrust` ( Windows 2012 or higher )
+    
+    + Able to scan un-replicated attributes. It will go to each DC's and get the most proper values
+    
+    + Giving out a colorful HTML report which contains information of domain, domain summary and data illustration with pie charts and bar graphs
+    
 
