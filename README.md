@@ -56,7 +56,7 @@ Suppy the objectClass (Eg: user, group, person...)
     `.\adTracking.ps1 -amount 100 `    
 
 
-# Usages 1.1
+# Usages 1.2
 
 You just need to follow the tools instruction
 
