@@ -198,7 +198,7 @@ Function modiScan{
         }
         else{
             $lastModi = ($lastmd |measure -max).maximum 
-            $lastModi    
+            
             if($lastModi -ne $null){   
                 $lastModi = $lastModi.ToString("yyyy/MM/dd")
                 if($lastModi.split("/")[0] -eq 2015){
@@ -253,7 +253,7 @@ function modiOne{
             $modify = "N/A"
             $global:noneModi++
         }
-        #$modify
+        
         $obj = New-Object -TypeName psobject
         $obj | Add-Member -MemberType NoteProperty -Name "modi" -Value $modify      
         $obj | Export-Csv -Path "$outFileModi" -NoTypeInformation -append -Delimiter $Delimiter
@@ -340,7 +340,7 @@ Function tracking
     $Description = $user.Properties.item("Description")[0] 
     $passSet = $false
     $passTrue =$false
-
+   
     #Last Logon
     $lastLogon = [datetime]::fromfiletime($logon)        
     $lastLogon= $lastLogon.ToString("yyyy/MM/dd")     
@@ -466,7 +466,7 @@ Function tracking
         $passwordEnforced = "Required"
     }  
 
-    #If the user cannot change the password
+    <#If the user cannot change the password
     if( $accountDis -band 64){
         $passChange ="Not allowed"
         $global:passChangeNotAll++
@@ -475,7 +475,7 @@ Function tracking
     {
         $passChange = "Allowed"
     }
-
+    #>
     #Password never expired
     if( $accountDis -band 0x10000){
         $passNExp ="Never Expires is set"
@@ -552,7 +552,7 @@ Function tracking
     $obj | Add-Member -MemberType NoteProperty -Name "Account Status" -Value $accountDisStatus  
     $obj | Add-Member -MemberType NoteProperty -Name "Smartcard Required" -Value $smartCDStatus 
     $obj | Add-Member -MemberType NoteProperty -Name "Password Required" -Value $passwordEnforced  
-    $obj | Add-Member -MemberType NoteProperty -Name "Password Change" -Value $passChange  
+    #$obj | Add-Member -MemberType NoteProperty -Name "Password Change" -Value $passChange  
     $obj | Add-Member -MemberType NoteProperty -Name "Never Expired Password Set" -Value $passNExp  
     $obj | Add-Member -MemberType NoteProperty -Name "Password Expiration Date" -Value $expDAte
     #$obj | Add-Member -MemberType NoteProperty -Name "Last Modified" -Value $lastModi    
@@ -563,7 +563,7 @@ Function tracking
     }
     else
     {
-        $lastModi 
+        $obj 
     }      
 }
 #Main run here
@@ -666,6 +666,7 @@ function main{
             $TotalUsersProcessed++
             If ($ProgressBar) 
             {
+               
                 Write-Progress -Activity "Processing $($userCount) Users" -Status ("Count: 
                 $($TotalUsersProcessed)- Username: {0}" -f $sam) -PercentComplete (($TotalUsersProcessed/$userCount)*100)
             }
@@ -762,8 +763,8 @@ if($exportedToCSV -eq $true){
         $CSV2 | ForEach-Object -Begin {$i = 0} {  
         $_ | Add-Member -MemberType NoteProperty -Name "User's Objects lastest Modification" -Value $CSV1[$i++].modi -PassThru 
                     } | Export-Csv $outFileMeg -NoTypeInformation
-        #rm $outFileModi
-       # rm $outFile
+        rm $outFileModi
+        rm $outFile
         Write-Host "Data has been exported to $outFileMeg" -foregroundcolor "magenta"
 }
 if($exportedToTxt -eq $true){
@@ -951,7 +952,7 @@ drawPie -hash $accExHash -title "Expired Accounts"|Out-Null
 drawPie -hash $accStatusHash -title "Account Status"|Out-Null
 drawPie -hash $smartReHash -title "Smart Cards Required"|Out-Null
 drawPie -hash $passReHash -title "Password Required"|Out-Null
-drawPie -hash $passChangedHash -title "Password CANNOT Change"|Out-Null
+#drawPie -hash $passChangedHash -title "Password CANNOT Change"|Out-Null
 drawPie -hash $passExpHash -title "Password Never Expired Settings"|Out-Null
 drawBar -hash $lastLogonHash -title  "Last Logon Date"|Out-Null
 drawBar -hash $passSetHash -title "Password Last Changed"|Out-Null
